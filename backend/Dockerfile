@@ -1,10 +1,20 @@
-FROM python:3.13.5-slim-bookworm
+FROM python:3.13.5-slim-bookworm AS dependencies
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 APP_ENV=production
-WORKDIR /app
+WORKDIR /build
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir --require-hashes -r requirements.txt \
-    && useradd --create-home --uid 10001 app
+RUN python -m venv --without-pip /opt/venv \
+    && python -m pip --python /opt/venv/bin/python install \
+        --no-cache-dir --no-compile --only-binary=:all: --require-hashes -r requirements.txt
+
+FROM python:3.13.5-slim-bookworm AS runtime
+
+ENV PATH="/opt/venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    APP_ENV=production
+WORKDIR /app
+RUN useradd --no-create-home --uid 10001 app
+COPY --from=dependencies /opt/venv /opt/venv
 COPY --chown=app:app backend/app ./app
 COPY --chown=app:app backend/alembic ./alembic
 COPY --chown=app:app backend/alembic.ini ./alembic.ini

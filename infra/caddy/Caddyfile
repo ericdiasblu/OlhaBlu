@@ -1,5 +1,6 @@
 {
-    email {$ACME_EMAIL}
+    {$CADDY_ACME_EMAIL}
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
 }
 
 http://:8080 {
@@ -13,11 +14,6 @@ http://:8080 {
 }
 
 {$DOMAIN} {
-    tls {
-        issuer acme {
-            dir https://acme-v02.api.letsencrypt.org/directory
-        }
-    }
     encode zstd gzip
     header X-Content-Type-Options nosniff
     header Referrer-Policy strict-origin-when-cross-origin

@@ -1,5 +1,7 @@
 # AEX | Ocorrências urbanas
 
+O estado do projeto, as pendências, as decisões e o histórico ficam no vault Obsidian em `AEX/`. Comece pela [central do projeto](AEX/Inicio%20AEX.md).
+
 Base da aplicação web colaborativa de Blumenau. O objetivo desta entrega é iniciar o desenvolvimento com uma aplicação executável e camadas organizadas. A referência principal é `docs/final/Documento_de_Arquitetura_Ocorrencias_Urbanas.md`, versão 1.2. Os sete PDFs de pesquisa foram considerados; decisões técnicas antigas de aplicativo móvel e rotas cedem à arquitetura final web.
 
 ## O que esta base entrega
@@ -11,7 +13,7 @@ Base da aplicação web colaborativa de Blumenau. O objetivo desta entrega é in
 - SQLAlchemy + PyMySQL para MySQL 8.4, Alembic e primeira migração com usuários, tipos e ocorrências.
 - Consulta pública real do banco: catálogo, listagem por área e detalhes publicados. Sem endpoints de escrita nesta etapa.
 - Atualização da área consultada a cada 15 segundos com a aba visível e rede disponível. Os marcadores são substituídos pelo conjunto atual.
-- Dockerfiles, Compose e Caddy preparados para a etapa futura de infraestrutura, sem execução de containers nesta entrega.
+- Dockerfiles com múltiplos estágios, Compose e Caddy para iniciar a aplicação completa em containers.
 - Dependências fixadas em `frontend/package-lock.json` e `backend/requirements.txt`, este último com hashes.
 
 ## Iniciar localmente, sem Docker
@@ -23,6 +25,7 @@ Na primeira instalação:
 ```powershell
 python -m venv backend/.venv
 backend/.venv/Scripts/python.exe -m pip install --require-hashes -r backend/requirements.txt
+node frontend/scripts/check-npm-sources.mjs
 npm --prefix frontend ci
 Copy-Item backend/.env.example backend/.env
 Copy-Item frontend/.env.example frontend/.env
@@ -132,12 +135,28 @@ Datas são armazenadas em UTC e a API inclui o fuso nas respostas; o frontend ap
 
 O esqueleto não implementa esses fluxos nem oferece botões que simulem suas ações. Relatos remotos continuarão dependendo de moderação quando a escrita for implementada; origem oficial não poderá ser atribuída pelo cliente. Não há navegação por destino, rastreamento de trajeto ou solicitação automática de GPS.
 
-## Infraestrutura preparada
+## Executar com Docker Compose
 
-`compose.yaml` mantém três serviços, redes separadas, volumes, reinício e dependências por health check. Apenas o web publica 80/443; API e banco ficam privados. Dockerfiles usam contexto da raiz. A configuração de Caddy preserva `/api` e mantém health checks fora do proxy público.
+Use Docker Engine com containers Linux, BuildKit e o plugin Docker Compose v2. No Windows ou macOS, o Docker Desktop atende a esses requisitos em modo Linux. O primeiro build precisa de acesso ao Docker Hub, npm e PyPI.
 
-As variáveis da raiz `.env.example` são destinadas a essa etapa futura. Credenciais de Blob, JWT e VAPID não são exigidas agora, pois esses módulos ainda não existem. Não foi criado override Docker de desenvolvimento: o fluxo atual usa Python e Vite diretamente. Execução de containers, provisionamento Azure, DNS/HTTPS reais e testes integrados ficam fora desta entrega, conforme o escopo solicitado.
+Na raiz, copie `.env.example` para `.env` na primeira execução e preencha `DB_PASSWORD` e `DB_ROOT_PASSWORD` com senhas distintas. Use `Copy-Item .env.example .env` no PowerShell ou `cp .env.example .env` no Linux/macOS.
 
-Para compilar o frontend: `npm run build`. A compilação gera `frontend/dist/`. Não foi adicionada suíte de testes nesta etapa.
+~~~sh
+docker compose config --quiet
+docker compose up --build --wait --wait-timeout 240
+docker compose ps
+~~~
+
+Abra [a aplicação local](http://127.0.0.1:8080) e [o catálogo da API](http://127.0.0.1:8080/api/occurrence-types). O MySQL inicializa o banco no volume e a API aplica as migrações antes de liberar o frontend. Os builds da API e do frontend usam o contexto da raiz. A imagem da API recebe as dependências e o código de execução. A imagem web recebe os arquivos compilados e a configuração do Caddy.
+
+O Compose publica somente as portas do Caddy, em loopback por padrão. Se a porta HTTP estiver ocupada, ajuste `WEB_HTTP_PORT` no `.env`. Para ativar o mapa, informe o token público em `VITE_MAPBOX_TOKEN` e execute novamente o comando de subida com `--build`.
+
+Use `docker compose logs db api web` para diagnosticar falhas e `docker compose down` para encerrar preservando os volumes. As senhas do MySQL são aplicadas na criação do volume. Se o banco já existir, mantenha as credenciais cadastradas nele ou altere-as no próprio MySQL.
+
+Para servir HTTPS público, configure `DOMAIN` com o domínio real, `ACME_EMAIL` com o e-mail de contato, `WEB_BIND_IP=0.0.0.0`, `WEB_HTTP_PORT=80` e `WEB_HTTPS_PORT=443`. Aponte o DNS para o servidor e libere TCP 80 e 443. O Caddy solicita o certificado pelo Let's Encrypt.
+
+Para compilar apenas o frontend fora do Docker, use `npm run build`. Os arquivos compilados ficam em `frontend/dist/`.
+
+O frontend usa o registro público `registry.npmjs.org`. Antes da instalação, o CI e o Docker verificam a origem e os hashes SHA-512 do lockfile. Para consultar alertas conhecidos e verificar as assinaturas do npm na instalação local, use `npm --prefix frontend audit` e `npm --prefix frontend audit signatures`.
 
 Detalhes de decisões e rastreabilidade dos documentos: [docs/BASE_INICIAL.md](docs/BASE_INICIAL.md).

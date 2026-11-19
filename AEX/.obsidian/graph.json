@@ -1,0 +1,30 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": true,
+  "showOrphans": false,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    { "query": "file:\"Inicio AEX\" OR path:\"00 Projeto/\"", "color": { "a": 1, "rgb": 4751816 } },
+    { "query": "path:\"01 Produto/\"", "color": { "a": 1, "rgb": 14721576 } },
+    { "query": "path:\"02 Frontend/\"", "color": { "a": 1, "rgb": 2132471 } },
+    { "query": "path:\"03 Backend/\"", "color": { "a": 1, "rgb": 11108496 } },
+    { "query": "path:\"04 Infra/\"", "color": { "a": 1, "rgb": 2973273 } },
+    { "query": "path:\"05 Decisoes/\"", "color": { "a": 1, "rgb": 14841988 } },
+    { "query": "path:\"06 Historico/\"", "color": { "a": 1, "rgb": 9805473 } }
+  ],
+  "collapse-display": true,
+  "showArrow": false,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": true,
+  "centerStrength": 0.518713248970312,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 95,
+  "scale": 1.9655560456566687,
+  "close": true
+}
