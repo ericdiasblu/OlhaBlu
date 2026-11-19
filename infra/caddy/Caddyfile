@@ -1,0 +1,36 @@
+{
+    email {$ACME_EMAIL}
+}
+
+http://:8080 {
+    root * /srv
+    @ready {
+        path /health/web
+        file /index.html
+    }
+    respond @ready "ok" 200
+    respond "not ready" 503
+}
+
+{$DOMAIN} {
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+        }
+    }
+    encode zstd gzip
+    header X-Content-Type-Options nosniff
+    header Referrer-Policy strict-origin-when-cross-origin
+    @api path /api /api/*
+    handle @api {
+        request_body {
+            max_size 20MB
+        }
+        reverse_proxy api:8000
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}
