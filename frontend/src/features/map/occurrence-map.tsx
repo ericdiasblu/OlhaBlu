@@ -4,14 +4,20 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Bbox, Occurrence } from '@/features/occurrences/types'
 import { MapPlaceholder } from './map-placeholder'
 
+type Coordinates = { latitude: number; longitude: number }
+
 type Props = {
   occurrences: Occurrence[]
   selectedId: string | null
   onSelect: (id: string) => void
   onBoundsChange: (bbox: Bbox) => void
+  center?: Coordinates
+  point?: Coordinates
+  onPick?: (point: Coordinates) => void
+  active?: boolean
 }
 
-export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChange }: Props) {
+export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChange, center, point, onPick, active = true }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markers = useRef(new Map<string, mapboxgl.Marker>())
@@ -21,53 +27,88 @@ export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChang
 
   useEffect(() => {
     if (!token || !container.current) return
-    let instance: mapboxgl.Map
-    try {
-      instance = new mapboxgl.Map({
-        container: container.current, accessToken: token,
-        style: 'mapbox://styles/mapbox/standard',
-        config: { basemap: {
-          theme: 'monochrome', lightPreset: 'day', show3dObjects: false,
-          showPointOfInterestLabels: false, showTransitLabels: false,
-        } },
-        projection: 'mercator', center: [-49.0661, -26.9194],
-        zoom: 12.5, minZoom: 8, renderWorldCopies: false, pitchWithRotate: false, dragRotate: false,
-        locale: {
-          'NavigationControl.ZoomIn': 'Aproximar',
-          'NavigationControl.ZoomOut': 'Afastar',
-          'GeolocateControl.FindMyLocation': 'Minha localização',
-          'GeolocateControl.LocationNotAvailable': 'Localização indisponível',
-          'AttributionControl.ToggleAttribution': 'Créditos do mapa',
-        },
-      })
-    } catch {
-      setError(true)
-      return
-    }
-    map.current = instance
-    instance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
-    instance.addControl(new mapboxgl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true }, trackUserLocation: false,
-    }), 'top-right')
-    const syncBounds = () => {
-      const bounds = instance.getBounds()
-      if (bounds) onBoundsChange([
-        Math.max(-180, bounds.getWest()), Math.max(-90, bounds.getSouth()),
-        Math.min(180, bounds.getEast()), Math.min(90, bounds.getNorth()),
-      ])
-    }
-    let loaded = false
-    instance.on('load', () => { loaded = true; setReady(true); setError(false); syncBounds() })
-    instance.on('moveend', () => { if (loaded) syncBounds() })
-    instance.on('error', () => { if (!loaded) setError(true) })
-    const activeMarkers = markers.current
+    let dispose: (() => void) | undefined
+    const frame = requestAnimationFrame(() => { dispose = createMap() })
     return () => {
-      activeMarkers.forEach(marker => marker.remove())
-      activeMarkers.clear()
-      instance.remove()
-      map.current = null
+      cancelAnimationFrame(frame)
+      dispose?.()
+    }
+
+    function createMap() {
+      if (!container.current) return
+      let instance: mapboxgl.Map
+      try {
+        instance = new mapboxgl.Map({
+          container: container.current, accessToken: token,
+          style: 'mapbox://styles/mapbox/standard',
+          config: { basemap: {
+            theme: 'monochrome', lightPreset: 'day', show3dObjects: false,
+            showPointOfInterestLabels: false, showTransitLabels: false,
+          } },
+          projection: 'mercator', center: [-49.0661, -26.9194],
+          zoom: 12.5, minZoom: 8, renderWorldCopies: false, pitchWithRotate: false, dragRotate: false,
+          locale: {
+            'NavigationControl.ZoomIn': 'Aproximar',
+            'NavigationControl.ZoomOut': 'Afastar',
+            'GeolocateControl.FindMyLocation': 'Minha localização',
+            'GeolocateControl.LocationNotAvailable': 'Localização indisponível',
+            'AttributionControl.ToggleAttribution': 'Créditos do mapa',
+          },
+        })
+      } catch {
+        setError(true)
+        return
+      }
+      map.current = instance
+      instance.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right')
+      instance.addControl(new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true }, trackUserLocation: false,
+      }), 'top-right')
+      const syncBounds = () => {
+        const bounds = instance.getBounds()
+        if (bounds) onBoundsChange([
+          Math.max(-180, bounds.getWest()), Math.max(-90, bounds.getSouth()),
+          Math.min(180, bounds.getEast()), Math.min(90, bounds.getNorth()),
+        ])
+      }
+      let loaded = false
+      instance.on('load', () => { loaded = true; setReady(true); setError(false); syncBounds() })
+      instance.on('moveend', () => { if (loaded) syncBounds() })
+      instance.on('error', () => { if (!loaded) setError(true) })
+      const activeMarkers = markers.current
+      return () => {
+        activeMarkers.forEach(marker => marker.remove())
+        activeMarkers.clear()
+        instance.remove()
+        map.current = null
+      }
     }
   }, [token, onBoundsChange])
+
+  useEffect(() => {
+    if (active && ready) map.current?.resize()
+  }, [active, ready])
+
+  useEffect(() => {
+    if (!ready || !center || !map.current) return
+    const options = { center: [center.longitude, center.latitude] as [number, number], zoom: 13.8 }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) map.current.jumpTo(options)
+    else map.current.easeTo({ ...options, duration: 350 })
+  }, [center, ready])
+
+  useEffect(() => {
+    const instance = map.current
+    if (!ready || !instance || !onPick) return
+    const pick = ({ lngLat }: mapboxgl.MapMouseEvent) => onPick({ longitude: lngLat.lng, latitude: lngLat.lat })
+    instance.on('click', pick)
+    return () => { instance.off('click', pick) }
+  }, [onPick, ready])
+
+  useEffect(() => {
+    if (!ready || !map.current || !point) return
+    const pin = new mapboxgl.Marker({ color: '#2356a3' }).setLngLat([point.longitude, point.latitude]).addTo(map.current)
+    return () => { pin.remove() }
+  }, [point, ready])
 
   useEffect(() => {
     const instance = map.current

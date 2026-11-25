@@ -4,7 +4,7 @@
 
 | Frente | O que existe | Evidência | O que falta |
 | --- | --- | --- | --- |
-| Frontend | Home responsiva OlhaBlu, filtros, detalhes, polling e Mapbox Standard monocromático | Mapa real e consulta com respostas simuladas em Edge a 1440, 390 e 320 px. Build TypeScript/Vite aprovado | Validar consulta com API e MySQL populado e implementar busca por endereço |
+| Frontend | Home responsiva OlhaBlu, Mapbox, formulários de conta e relato, acompanhamento, moderação e alertas | Build aprovado. Fluxos de demonstração exercitados no Edge a 1440, 390 e 320 px | Validar consulta com API e MySQL populado e conectar autenticação, escrita, Geocoding, fotos e alertas aos serviços reais |
 | Backend | API de consulta, regras de visibilidade, migração inicial, catálogo e dados de demonstração opcionais | API inicializada e proxy respondeu. `/health/live` retornou 200; prontidão e consulta retornaram 503 sem banco. SQL da migração gerado | Migração aplicada em MySQL real e consulta com dados validada |
 | Docker e Caddy | Compose de três serviços, imagens com múltiplos estágios e job de smoke test | Compose aceito nos modos local e HTTPS. Caddy aceito. Imagens e pacotes Python verificados para Linux x64 e ARM64 | Build e execução reais de containers, com resultado registrado |
 | Segurança npm | Registro fixado e verificação de origem no CI e no Docker | Verificação de origem e integridade do lockfile aprovada e zero vulnerabilidades reportadas pelo npm audit em 25/11/2026 | Repetir a auditoria quando o lockfile mudar |

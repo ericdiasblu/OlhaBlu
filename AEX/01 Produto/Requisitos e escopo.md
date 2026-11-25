@@ -6,16 +6,16 @@ A numeração abaixo segue a consolidação técnica v1.2. As primeiras versões
 
 | RF | Escopo vigente | Estado |
 | --- | --- | --- |
-| RF01 | Mapa e lista de ocorrências de Blumenau | UI e integração implementadas. Mapa real a validar com token |
-| RF02 | Registro com tipo, descrição, local e foto opcional | Planejado com proximidade e moderação |
-| RF03 | Alertas no app e Web Push quando suportado | Planejado |
-| RF04 | Detalhes, origem, situação, datas, confirmação e fotos | Detalhes básicos implementados. Confirmações e fotos pendentes |
-| RF05 | Explorar regiões e buscar bairro ou endereço | Mover mapa implementado. Geocoding pendente |
+| RF01 | Mapa e lista de ocorrências de Blumenau | Mapa real validado com token. Falta validar consulta com MySQL populado |
+| RF02 | Registro com tipo, descrição, local e foto opcional | Cadastro, revisão e envio demonstrativos. Publicação no servidor pendente |
+| RF03 | Alertas no app e Web Push quando suportado | Central demonstrativa. Entrega real e Web Push pendentes |
+| RF04 | Detalhes, origem, situação, datas, confirmação e fotos | Detalhes publicados disponíveis. Confirmação e prévia de foto demonstrativas |
+| RF05 | Explorar regiões e buscar bairro ou endereço | Mapa e busca demonstrativa implementados. Geocoding pendente |
 | RF06 | Situação ativa ou resolvida e atualidade independente | Leitura e filtros implementados. Mudanças de situação pendentes |
 | RF07 | Filtros por tipo, situação e área | Implementado na consulta, com limite visível na interface |
 | RF08 | Datas de registro e atualização | UTC na API e `America/Sao_Paulo` na tela |
-| RF09 | Consentimento e controle de alertas | Planejado. Preferências por tipo/região ficam para evolução |
-| RF10 | Denunciar informação incorreta e encaminhar para análise | Planejado |
+| RF09 | Consentimento e controle de alertas | Preferências simuladas na central. Consentimento real pendente |
+| RF10 | Denunciar informação incorreta e encaminhar para análise | Fluxo demonstrativo do envio à fila. Integração pendente |
 | RF11 | Rotas alternativas | Adiado. O MVP abre sem destino, Directions ou histórico de trajeto |
 | RF12 | Indicar origem e confirmação comunitária | Origem modelada e apresentada. Confirmação e fonte oficial real pendentes |
 

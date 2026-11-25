@@ -1,8 +1,9 @@
 import { X } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { formatDate } from '@/lib/utils'
 import type { Occurrence } from './types'
 
-export function OccurrenceDetails({ occurrence, onClose }: { occurrence: Occurrence; onClose: () => void }) {
+export function OccurrenceDetails({ occurrence, onClose, actions }: { occurrence: Occurrence; onClose: () => void; actions?: ReactNode }) {
   return <section className="occurrence-details" aria-label="Detalhes da ocorrência">
     <span className="detail-icon" data-incident-type={occurrence.occurrence_type.slug} aria-hidden="true">
       <span className="incident-glyph" />
@@ -24,6 +25,7 @@ export function OccurrenceDetails({ occurrence, onClose }: { occurrence: Occurre
         <div><dt>Local</dt><dd>{occurrence.latitude.toFixed(5)}, {occurrence.longitude.toFixed(5)}</dd></div>
       </dl>
       {occurrence.freshness === 'expired' && <p className="row-note">Sem confirmação recente</p>}
+      {actions && <div className="detail-actions">{actions}</div>}
     </div>
     <button type="button" className="detail-close" onClick={onClose} aria-label="Fechar detalhes"><X size={20} /></button>
   </section>

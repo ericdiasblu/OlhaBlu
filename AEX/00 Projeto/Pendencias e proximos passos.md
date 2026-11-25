@@ -18,16 +18,17 @@ Marque uma tarefa quando houver evidência do resultado. Registre a evidência n
 - [ ] **BE-02** Implementar cadastro, login, logout, papel de moderador e sessão revogável com Argon2id e JWT curto.
 - [ ] **BE-03** Implementar evidência temporária de localização e registro com decisão de publicação no servidor.
 - [ ] **BE-04** Entregar junto da escrita a fila mínima de moderação e auditoria. Validar acesso do autor e do moderador aos relatos pendentes.
-- [ ] **FE-02** Entregar a interface de conta, formulário de relato e acompanhamento da decisão, usando os contratos reais da API.
+- [ ] **FE-02** Integrar as telas já implementadas de conta, registro, revisão, acompanhamento e moderação à API. Trocar o estado de demonstração pelos contratos reais, tratar expiração de sessão e testar permissões, erros e recuperação de ponta a ponta.
 
 Detalhes e critérios de segurança no [[03 Backend/Publicacao e moderacao|fluxo de publicação e moderação]].
 
 ## 3 · Evoluir a consulta e o MVP
 
 - [ ] **BE-05** Implementar confirmações independentes, resolução, denúncias e auditoria de mudanças.
-- [ ] **FE-03** Implementar busca de bairro/endereço com Geocoding. Validar sincronização de área, limite de resultados e acessibilidade.
+- [ ] **FE-03** Conectar a interface de busca por bairro/endereço ao Geocoding. O frontend já pesquisa um catálogo de exemplos. Validar recorte, limite de resultados e acessibilidade com respostas reais.
 - [ ] **BE-06** Integrar Azure Blob privado com validação de fotos e URLs de leitura curtas.
 - [ ] **BE-07** Implementar alertas no aplicativo e, depois, outbox e Web Push com consentimento e deduplicação.
+- [ ] **FE-04** Conectar confirmação, indicação de resolução, denúncia, prévia de foto e central de alertas à API. A UI já permite percorrer esses fluxos localmente. Integrar consentimento, estados de permissão e envio de Web Push após **BE-07**.
 
 ## 4 · Implantar e demonstrar
 

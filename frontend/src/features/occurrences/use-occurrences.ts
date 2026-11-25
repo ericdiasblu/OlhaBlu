@@ -4,7 +4,7 @@ import type { Bbox, Filters, OccurrencePage, OccurrenceType } from './types'
 
 const emptyPage: OccurrencePage = { items: [], next_cursor: null, has_more: false }
 
-export function useOccurrences(bbox: Bbox, filters: Filters) {
+export function useOccurrences(bbox: Bbox, filters: Filters, enabled = true) {
   const [page, setPage] = useState<OccurrencePage>(emptyPage)
   const [types, setTypes] = useState<OccurrenceType[]>([])
   const [loading, setLoading] = useState(true)
@@ -15,6 +15,7 @@ export function useOccurrences(bbox: Bbox, filters: Filters) {
   const refresh = useCallback(() => setRevision(value => value + 1), [])
 
   useEffect(() => {
+    if (!enabled) return
     let disposed = false
     let controller: AbortController | undefined
     setPage(emptyPage)
@@ -60,7 +61,7 @@ export function useOccurrences(bbox: Bbox, filters: Filters) {
       document.removeEventListener('visibilitychange', resume)
       window.removeEventListener('online', resume)
     }
-  }, [bboxKey, filters.typeId, filters.status, filters.freshness, revision])
+  }, [bboxKey, filters.typeId, filters.status, filters.freshness, revision, enabled])
 
   return { ...page, types, loading, error, updatedAt, refresh }
 }

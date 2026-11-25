@@ -1,123 +1,129 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
-import { ChevronDown, CircleHelp, MapPin, MapPinned, RefreshCw, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bell, LogOut, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FilterSelect } from '@/components/ui/filter-select'
-import { MapPlaceholder } from '@/features/map/map-placeholder'
-import { OccurrenceCard } from '@/features/occurrences/occurrence-card'
-import { OccurrenceDetails } from '@/features/occurrences/occurrence-details'
-import { useOccurrences } from '@/features/occurrences/use-occurrences'
-import type { Bbox, Filters } from '@/features/occurrences/types'
-import { formatDate } from '@/lib/utils'
+import { MapPage } from '@/features/map/map-page'
+import { AuthPage } from '@/features/workspace/auth-page'
+import { ReportPage } from '@/features/workspace/report-page'
+import { AlertsPage, ModerationPage, ReportsPage } from '@/features/workspace/activity-pages'
+import { WorkspaceHeading } from '@/features/workspace/workspace-ui'
+import { useDemoWorkspace, type Account, type Report } from '@/features/workspace/demo-workspace'
+import { navigate, routes, useRoute, type Route } from './navigation'
+import './workspace.css'
 
-const OccurrenceMap = lazy(() => import('@/features/map/occurrence-map').then(module => ({ default: module.OccurrenceMap })))
+const memberRoutes: Route[] = ['report', 'reports', 'alerts', 'moderation']
 
 export function App() {
-  const [bbox, setBbox] = useState<Bbox>([-49.15, -27, -48.98, -26.82])
-  const [filters, setFilters] = useState<Filters>({ typeId: '', status: 'active', freshness: 'current' })
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const onBoundsChange = useCallback((bounds: Bbox) => setBbox(bounds), [])
-  const onSelect = useCallback((id: string) => setSelectedId(current => current === id ? null : id), [])
-  const data = useOccurrences(bbox, filters)
-  const selected = data.items.find(occurrence => occurrence.id === selectedId)
-  const hasSimulations = data.items.some(occurrence => occurrence.is_simulated)
-  function updateFilters(next: Partial<Filters>) {
-    setSelectedId(null)
-    setFilters(current => ({ ...current, ...next }))
+  const route = useRoute()
+  const flow = useDemoWorkspace()
+  const [showExamples, setShowExamples] = useState(false)
+  const [editingId, setEditingId] = useState<string>()
+  const [message, setMessage] = useState<string>()
+  const [hasVisitedMap, setHasVisitedMap] = useState(route === 'map')
+  const previousRoute = useRef(route)
+  const guarded = memberRoutes.includes(route) && !flow.account
+  const unread = flow.notices.filter(notice => !notice.read).length
+  const editing = flow.reports.find(report => report.id === editingId && report.authorId === flow.account?.id && report.status === 'revision')
+
+  useEffect(() => {
+    if (previousRoute.current === route) return
+    previousRoute.current = route
+    if (route === 'map') setHasVisitedMap(true)
+    window.scrollTo(0, 0)
+    document.getElementById(route === 'map' ? 'occurrences-title' : 'workspace-title')?.focus({ preventScroll: true })
+  }, [route])
+
+  function signIn(account: Account) {
+    flow.signIn(account)
+    if (account.role === 'moderator') navigate('moderation')
+    else if (!guarded || route === 'moderation') navigate('map')
   }
 
-  function closeDetails(id: string) {
-    setSelectedId(null)
-    document.getElementById(`occurrence-${id}`)?.focus({ preventScroll: true })
+  function signOut() {
+    flow.signIn(null)
+    setEditingId(undefined)
+    setMessage(undefined)
+    navigate('map')
   }
 
-  const filterToggle = <button type="button" className="filters-toggle" aria-expanded={filtersOpen}
-    aria-controls="occurrence-filters" onClick={() => setFiltersOpen(open => !open)}>
-    <SlidersHorizontal size={16} aria-hidden="true" /> Filtros
-    <ChevronDown size={14} aria-hidden="true" className="filters-chevron" />
-  </button>
+  function editReport(report: Report) {
+    setEditingId(report.id)
+    setMessage(undefined)
+    navigate('report')
+  }
 
-  const refresh = <button type="button" className="refresh-button" onClick={data.refresh}
-    aria-label="Atualizar ocorrências" disabled={data.loading}>
-    <RefreshCw size={20} className={data.loading ? 'animate-spin' : ''} />
-  </button>
+  const memberNav = flow.account && <nav className="member-nav" aria-label="Área da conta">
+    {flow.account.role === 'resident' && <>
+      <a href={routes.reports} aria-current={route === 'reports' ? 'page' : undefined}>Meus relatos</a>
+      <a href={routes.alerts} aria-current={route === 'alerts' ? 'page' : undefined}>
+        <Bell size={16} aria-hidden="true" /> Alertas {unread > 0 && <span className="unread-count" aria-label={`${unread} não lidos`}>{unread}</span>}
+      </a>
+      <Button asChild className="report-link"><a href={routes.report} onClick={() => setEditingId(undefined)}>
+        <Plus aria-hidden="true" /> Registrar <span className="report-link-extra">ocorrência</span>
+      </a></Button>
+    </>}
+    {flow.account.role === 'moderator' && <a href={routes.moderation} aria-current={route === 'moderation' ? 'page' : undefined}>Moderação</a>}
+    <Button type="button" className="member-logout" variant="ghost" onClick={signOut}><LogOut aria-hidden="true" /> Sair</Button>
+  </nav>
+
+  let page
+  if (route === 'login' || route === 'signup' || guarded) {
+    page = <AuthPage key={route} mode={route === 'signup' ? 'signup' : 'login'} onSignIn={signIn} requiresAccount={guarded} />
+  } else if (route === 'report' && flow.account?.role === 'resident') {
+    page = <ReportPage key={editing?.id ?? 'new'} previous={editing} onSubmit={draft => {
+      flow.submitReport(draft, editing?.id)
+      setEditingId(undefined)
+      setMessage(editing ? 'Correção enviada para análise.' : 'Relato enviado para análise.')
+      navigate('reports')
+    }} />
+  } else if (route === 'reports' && flow.account?.role === 'resident') {
+    page = <ReportsPage flow={flow} onEdit={editReport} message={message} />
+  } else if (route === 'moderation' && flow.account?.role === 'moderator') {
+    page = <ModerationPage flow={flow} />
+  } else if (route === 'alerts' && flow.account?.role === 'resident') {
+    page = <AlertsPage flow={flow} />
+  } else if (route === 'about') {
+    page = <main id="conteudo" className="workspace">
+      <WorkspaceHeading title="Sobre o projeto" description="Um mapa colaborativo de ocorrências urbanas em Blumenau." />
+      <section className="workspace-panel workspace-aside">
+        <h2>Como funciona</h2>
+        <p>Qualquer pessoa pode consultar as ocorrências publicadas. Quem tem conta pode enviar relatos, confirmar informações e encaminhar denúncias.</p>
+        <p>Relatos em análise só são visíveis para quem enviou e para a moderação. O mapa ajuda na consulta e não substitui as orientações dos órgãos responsáveis.</p>
+        <Button asChild variant="outline"><a href={routes.map}>Explorar mapa</a></Button>
+      </section>
+    </main>
+  } else if (route !== 'map') {
+    page = <main id="conteudo" className="workspace">
+      <WorkspaceHeading title="Área restrita" description="Este fluxo está reservado ao perfil correspondente na demonstração."
+        action={<Button asChild><a href={routes.map}>Voltar ao mapa</a></Button>} />
+    </main>
+  }
 
   return <div className="app-shell" id="mapa">
-    <a className="skip-link" href="#ocorrencias">Ir para as ocorrências</a>
-    <header className="site-header">
-      <a className="brand" href="/" aria-label="OlhaBlu, página inicial">
+    <a className="skip-link" href={route === 'map' ? '#map-content' : '#conteudo'} onClick={event => {
+      event.preventDefault()
+      document.getElementById(route === 'map' ? 'occurrences-title' : 'workspace-title')?.focus()
+    }}>Ir para o conteúdo</a>
+    <header className={flow.account ? 'site-header member-header' : 'site-header'}>
+      <a className="brand" href={routes.map} aria-label="OlhaBlu, página inicial">
         <img className="brand-mark" src="/olhablu-icon.png" width={40} height={40} alt="" />
         <strong>OlhaBlu</strong>
       </a>
       <nav aria-label="Navegação principal" className="header-nav">
-        <a href="#mapa" className="nav-active" aria-current="page">Explorar mapa</a>
-        <span className="nav-label">Sobre o projeto</span>
+        <a href={routes.map} className={route === 'map' ? 'nav-active' : undefined} aria-current={route === 'map' ? 'page' : undefined}>Explorar mapa</a>
+        <a href={routes.about} className={route === 'about' ? 'nav-active' : undefined} aria-current={route === 'about' ? 'page' : undefined}>Sobre o projeto</a>
       </nav>
-      <span className="city-label"><MapPin size={18} aria-hidden="true" /> Blumenau, SC</span>
+      {memberNav ?? <div className="header-account">
+        <Button asChild variant="ghost"><a href={routes.login}>Entrar</a></Button>
+        <Button asChild><a href={routes.signup}>Criar conta</a></Button>
+      </div>}
     </header>
-
-    <main>
-      <section className="explorer" aria-label="Consulta de ocorrências">
-        <div className="map-panel">
-          {import.meta.env.VITE_MAPBOX_TOKEN ? <Suspense fallback={<MapPlaceholder loading />}>
-            <OccurrenceMap occurrences={data.items} selectedId={selectedId} onSelect={onSelect} onBoundsChange={onBoundsChange} />
-          </Suspense> : <MapPlaceholder />}
-        </div>
-        <aside className="occurrence-panel" id="ocorrencias" tabIndex={-1} aria-labelledby="occurrences-title">
-          <div className="panel-heading">
-            <div>
-              <h1 id="occurrences-title">Ocorrências</h1>
-              {hasSimulations && <p>{data.items.every(occurrence => occurrence.is_simulated) ? 'Dados de demonstração' : 'Inclui dados de demonstração'}</p>}
-            </div>
-            {refresh}
-          </div>
-          <div className="status-switch" role="group" aria-label="Situação">
-            <button type="button" aria-pressed={filters.status === 'active'} onClick={() => updateFilters({ status: 'active' })}>Ativas</button>
-            <button type="button" aria-pressed={filters.status === 'resolved'} onClick={() => updateFilters({ status: 'resolved' })}>Resolvidas</button>
-          </div>
-          <div className="results-heading">
-            <p aria-live="polite">{data.loading && !data.items.length ? 'Consultando região…' : data.error ? 'Consulta indisponível' : `${data.items.length} ocorrência${data.items.length === 1 ? '' : 's'}`}</p>
-            {filterToggle}
-          </div>
-          <div className={filtersOpen ? 'filters filters-open' : 'filters'} id="occurrence-filters" inert={!filtersOpen}>
-            <div className="filters-inner">
-              <FilterSelect id="type" label="Tipo" value={filters.typeId || 'all'}
-                onChange={value => updateFilters({ typeId: value === 'all' ? '' : value })}
-                options={[{ value: 'all', label: 'Todos os tipos' }, ...data.types.map(type => ({
-                  value: String(type.id), label: type.label,
-                }))]} />
-              <FilterSelect<Filters['freshness']> id="freshness" label="Atualidade" value={filters.freshness}
-                onChange={freshness => updateFilters({ freshness })}
-                options={[
-                  { value: 'current', label: 'Recentes' },
-                  { value: 'expired', label: 'Sem confirmação' },
-                  { value: 'all', label: 'Todas' },
-                ]} />
-            </div>
-          </div>
-          <div className="results-list" aria-busy={data.loading}>
-            {data.error ? <div className="empty-state" role="alert"><CircleHelp size={30} strokeWidth={1.5} />
-              <h3>Não foi possível atualizar</h3><p>{data.error}</p>
-              <Button variant="outline" size="sm" onClick={data.refresh}>Tentar novamente</Button>
-            </div> : !data.loading && data.items.length === 0 ? <div className="empty-state"><MapPinned size={34} strokeWidth={1.4} />
-              <h3>Nenhum relato por aqui</h3><p>Nenhuma ocorrência publicada corresponde à área e aos filtros selecionados. Isso não garante ausência de riscos.</p>
-            </div> : data.items.map(occurrence => <div className="occurrence-row" key={occurrence.id}>
-              <OccurrenceCard occurrence={occurrence}
-                selected={selectedId === occurrence.id} onSelect={() => onSelect(occurrence.id)} />
-              {selectedId === occurrence.id && <div className="details-inline">
-                <OccurrenceDetails occurrence={occurrence} onClose={() => closeDetails(occurrence.id)} />
-              </div>}
-            </div>)}
-            {data.loading && data.items.length === 0 && <div className="empty-state" aria-hidden="true"><RefreshCw className="animate-spin" /></div>}
-            {data.has_more && <p className="limit-note">Exibindo os primeiros 100 relatos. Aproxime o mapa para consultar uma área menor.</p>}
-          </div>
-          {data.updatedAt && <div className="panel-footer">Consulta atualizada em {formatDate(data.updatedAt)}</div>}
-        </aside>
-        {selected && <div className="details-overlay" key={selected.id}>
-          <OccurrenceDetails occurrence={selected} onClose={() => closeDetails(selected.id)} />
-        </div>}
-      </section>
-    </main>
-    <footer className="site-footer"><span>OlhaBlu · Blumenau, Santa Catarina</span><span>Construído para a comunidade.</span></footer>
+    {(route === 'map' || hasVisitedMap) && <div hidden={route !== 'map'}>
+      <MapPage flow={flow} showExamples={showExamples} onExamples={setShowExamples} active={route === 'map'} />
+    </div>}
+    {page}
+    <footer className="site-footer">
+      <span>OlhaBlu · Blumenau, Santa Catarina</span>
+      <a href={routes.about}>Sobre o projeto</a>
+    </footer>
   </div>
 }

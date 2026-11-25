@@ -7,7 +7,7 @@ const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4',
   { variants: {
     variant: {
-      default: 'bg-primary text-primary-foreground hover:bg-(--hover) hover:text-primary',
+      default: 'border border-transparent bg-primary text-primary-foreground hover:border-primary hover:bg-white hover:text-primary',
       outline: 'border border-border bg-white text-foreground hover:bg-(--hover)',
       ghost: 'text-muted-foreground hover:bg-(--hover) hover:text-foreground',
     },
@@ -18,7 +18,7 @@ const buttonVariants = cva(
 function Button({ className, variant, size, asChild = false, ...props }:
   ComponentProps<'button'> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
   const Comp = asChild ? Slot : 'button'
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />
+  return <Comp data-slot="button" data-variant={variant ?? 'default'} className={cn(buttonVariants({ variant, size, className }))} {...props} />
 }
 
 export { Button, buttonVariants }
