@@ -64,6 +64,8 @@ A migração cria somente o esquema e os sete tipos de ocorrências. Não cria c
 
 Preencha `VITE_MAPBOX_TOKEN` em `frontend/.env` com um token público Mapbox permitido para o domínio local e reinicie o Vite. O mapa abre em Blumenau, permite pan/zoom e sincroniza a área visível com a listagem. O controle de localização pede permissão somente ao ser acionado e não envia nem armazena a posição na API.
 
+A home usa **Mapbox Standard** no tema monocromático. Para o mapa interativo, crie um token público dedicado com os escopos `styles:read` e `fonts:read`. Para produção, restrinja o token aos domínios em que a aplicação será publicada. Use um token público separado para desenvolvimento local. A integração atual usa apenas leitura e dispensa token secreto. Caso uma futura automação de servidor precise escrever estilos ou publicar dados, mantenha o token secreto fora de qualquer variável `VITE_*` e conceda somente os escopos da operação. [Documentação de tokens do Mapbox](https://docs.mapbox.com/accounts/guides/tokens/)
+
 Em produção, o token é um argumento de build, pois variáveis `VITE_*` são incorporadas ao JavaScript. Não coloque credenciais privadas nessas variáveis. O build não exige um token para compilar.
 
 ### Dados opcionais para desenvolvimento

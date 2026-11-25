@@ -1,8 +1,10 @@
 import { lazy, Suspense, useCallback, useState } from 'react'
-import { ArrowDown, ArrowUpRight, CircleHelp, Layers2, MapPin, MapPinned, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ChevronDown, CircleHelp, MapPin, MapPinned, RefreshCw, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FilterSelect } from '@/components/ui/filter-select'
 import { MapPlaceholder } from '@/features/map/map-placeholder'
 import { OccurrenceCard } from '@/features/occurrences/occurrence-card'
+import { OccurrenceDetails } from '@/features/occurrences/occurrence-details'
 import { useOccurrences } from '@/features/occurrences/use-occurrences'
 import type { Bbox, Filters } from '@/features/occurrences/types'
 import { formatDate } from '@/lib/utils'
@@ -13,62 +15,85 @@ export function App() {
   const [bbox, setBbox] = useState<Bbox>([-49.15, -27, -48.98, -26.82])
   const [filters, setFilters] = useState<Filters>({ typeId: '', status: 'active', freshness: 'current' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const onBoundsChange = useCallback((bounds: Bbox) => setBbox(bounds), [])
-  const onSelect = useCallback((id: string) => setSelectedId(id), [])
+  const onSelect = useCallback((id: string) => setSelectedId(current => current === id ? null : id), [])
   const data = useOccurrences(bbox, filters)
+  const selected = data.items.find(occurrence => occurrence.id === selectedId)
+  const hasSimulations = data.items.some(occurrence => occurrence.is_simulated)
+  function updateFilters(next: Partial<Filters>) {
+    setSelectedId(null)
+    setFilters(current => ({ ...current, ...next }))
+  }
 
-  return <div className="app-shell">
+  function closeDetails(id: string) {
+    setSelectedId(null)
+    document.getElementById(`occurrence-${id}`)?.focus({ preventScroll: true })
+  }
+
+  const filterToggle = <button type="button" className="filters-toggle" aria-expanded={filtersOpen}
+    aria-controls="occurrence-filters" onClick={() => setFiltersOpen(open => !open)}>
+    <SlidersHorizontal size={16} aria-hidden="true" /> Filtros
+    <ChevronDown size={14} aria-hidden="true" className="filters-chevron" />
+  </button>
+
+  const refresh = <button type="button" className="refresh-button" onClick={data.refresh}
+    aria-label="Atualizar ocorrências" disabled={data.loading}>
+    <RefreshCw size={20} className={data.loading ? 'animate-spin' : ''} />
+  </button>
+
+  return <div className="app-shell" id="mapa">
     <a className="skip-link" href="#ocorrencias">Ir para as ocorrências</a>
     <header className="site-header">
-      <a className="brand" href="/" aria-label="AEX, página inicial">
-        <span className="brand-mark"><MapPin size={23} strokeWidth={2.2} /></span>
-        <span><strong>AEX<span className="brand-dot">.</span></strong><small>OCORRÊNCIAS URBANAS</small></span>
+      <a className="brand" href="/" aria-label="OlhaBlu, página inicial">
+        <img className="brand-mark" src="/olhablu-icon.png" width={40} height={40} alt="" />
+        <strong>OlhaBlu</strong>
       </a>
       <nav aria-label="Navegação principal" className="header-nav">
-        <a href="#mapa" className="nav-active">Explorar mapa</a>
-        <a href="#sobre">Sobre o projeto <ArrowUpRight size={14} /></a>
+        <a href="#mapa" className="nav-active" aria-current="page">Explorar mapa</a>
+        <span className="nav-label">Sobre o projeto</span>
       </nav>
-      <span className="city-pill"><span /> Blumenau, SC</span>
+      <span className="city-label"><MapPin size={18} aria-hidden="true" /> Blumenau, SC</span>
     </header>
 
     <main>
-      <section className="intro-section">
-        <div><span className="eyebrow">INFORMAÇÃO QUE APROXIMA</span>
-          <h1>Sua cidade, vista em conjunto<span>.</span></h1>
-          <p>Consulte ocorrências e conheça a situação de cada região de Blumenau.</p>
+      <section className="explorer" aria-label="Consulta de ocorrências">
+        <div className="map-panel">
+          {import.meta.env.VITE_MAPBOX_TOKEN ? <Suspense fallback={<MapPlaceholder loading />}>
+            <OccurrenceMap occurrences={data.items} selectedId={selectedId} onSelect={onSelect} onBoundsChange={onBoundsChange} />
+          </Suspense> : <MapPlaceholder />}
         </div>
-        <a className="intro-link" href="#ocorrencias">Explore a região <ArrowDown size={17} /></a>
-      </section>
-
-      <section className="explorer" id="mapa" aria-label="Consulta de ocorrências">
-        <aside className="occurrence-panel" id="ocorrencias" tabIndex={-1}>
-          <div className="panel-heading"><div><span className="eyebrow">NA ÁREA CONSULTADA</span><h2>Ocorrências</h2></div>
-            <Button variant="outline" size="icon" onClick={data.refresh} aria-label="Atualizar ocorrências" disabled={data.loading}>
-              <RefreshCw className={data.loading ? 'animate-spin' : ''} />
-            </Button>
-          </div>
-          <div className="filters">
-            <label htmlFor="type">Tipo de ocorrência</label>
-            <select id="type" value={filters.typeId} onChange={event => setFilters({ ...filters, typeId: event.target.value })}>
-              <option value="">Todos os tipos</option>
-              {data.types.map(type => <option key={type.id} value={type.id}>{type.label}</option>)}
-            </select>
-            <div className="filter-grid">
-              <div><label htmlFor="status">Situação</label>
-                <select id="status" value={filters.status} onChange={event => setFilters({ ...filters, status: event.target.value as Filters['status'] })}>
-                  <option value="active">Ativas</option><option value="resolved">Resolvidas</option>
-                </select>
-              </div>
-              <div><label htmlFor="freshness">Atualidade</label>
-                <select id="freshness" value={filters.freshness} onChange={event => setFilters({ ...filters, freshness: event.target.value as Filters['freshness'] })}>
-                  <option value="current">Recentes</option><option value="expired">Sem confirmação</option><option value="all">Todas</option>
-                </select>
-              </div>
+        <aside className="occurrence-panel" id="ocorrencias" tabIndex={-1} aria-labelledby="occurrences-title">
+          <div className="panel-heading">
+            <div>
+              <h1 id="occurrences-title">Ocorrências</h1>
+              {hasSimulations && <p>{data.items.every(occurrence => occurrence.is_simulated) ? 'Dados de demonstração' : 'Inclui dados de demonstração'}</p>}
             </div>
+            {refresh}
           </div>
-          <div className="results-heading" aria-live="polite">
-            <span>{data.loading ? 'Consultando região…' : data.error ? 'Consulta indisponível' : `${data.items.length} ocorrência${data.items.length === 1 ? '' : 's'}`}</span>
-            {data.updatedAt && <span>{formatDate(data.updatedAt)}</span>}
+          <div className="status-switch" role="group" aria-label="Situação">
+            <button type="button" aria-pressed={filters.status === 'active'} onClick={() => updateFilters({ status: 'active' })}>Ativas</button>
+            <button type="button" aria-pressed={filters.status === 'resolved'} onClick={() => updateFilters({ status: 'resolved' })}>Resolvidas</button>
+          </div>
+          <div className="results-heading">
+            <p aria-live="polite">{data.loading && !data.items.length ? 'Consultando região…' : data.error ? 'Consulta indisponível' : `${data.items.length} ocorrência${data.items.length === 1 ? '' : 's'}`}</p>
+            {filterToggle}
+          </div>
+          <div className={filtersOpen ? 'filters filters-open' : 'filters'} id="occurrence-filters" inert={!filtersOpen}>
+            <div className="filters-inner">
+              <FilterSelect id="type" label="Tipo" value={filters.typeId || 'all'}
+                onChange={value => updateFilters({ typeId: value === 'all' ? '' : value })}
+                options={[{ value: 'all', label: 'Todos os tipos' }, ...data.types.map(type => ({
+                  value: String(type.id), label: type.label,
+                }))]} />
+              <FilterSelect<Filters['freshness']> id="freshness" label="Atualidade" value={filters.freshness}
+                onChange={freshness => updateFilters({ freshness })}
+                options={[
+                  { value: 'current', label: 'Recentes' },
+                  { value: 'expired', label: 'Sem confirmação' },
+                  { value: 'all', label: 'Todas' },
+                ]} />
+            </div>
           </div>
           <div className="results-list" aria-busy={data.loading}>
             {data.error ? <div className="empty-state" role="alert"><CircleHelp size={30} strokeWidth={1.5} />
@@ -76,27 +101,23 @@ export function App() {
               <Button variant="outline" size="sm" onClick={data.refresh}>Tentar novamente</Button>
             </div> : !data.loading && data.items.length === 0 ? <div className="empty-state"><MapPinned size={34} strokeWidth={1.4} />
               <h3>Nenhum relato por aqui</h3><p>Nenhuma ocorrência publicada corresponde à área e aos filtros selecionados. Isso não garante ausência de riscos.</p>
-            </div> : data.items.map(occurrence => <OccurrenceCard key={occurrence.id} occurrence={occurrence}
-              selected={selectedId === occurrence.id} onSelect={() => onSelect(occurrence.id)} />)}
-            {data.loading && data.items.length === 0 && <div className="empty-state" role="status"><RefreshCw className="animate-spin" /><p>Consultando ocorrências…</p></div>}
+            </div> : data.items.map(occurrence => <div className="occurrence-row" key={occurrence.id}>
+              <OccurrenceCard occurrence={occurrence}
+                selected={selectedId === occurrence.id} onSelect={() => onSelect(occurrence.id)} />
+              {selectedId === occurrence.id && <div className="details-inline">
+                <OccurrenceDetails occurrence={occurrence} onClose={() => closeDetails(occurrence.id)} />
+              </div>}
+            </div>)}
+            {data.loading && data.items.length === 0 && <div className="empty-state" aria-hidden="true"><RefreshCw className="animate-spin" /></div>}
             {data.has_more && <p className="limit-note">Exibindo os primeiros 100 relatos. Aproxime o mapa para consultar uma área menor.</p>}
           </div>
-          <div className="panel-footer"><ShieldCheck size={15} /><span>Relatos comunitários identificados pela origem.</span></div>
+          {data.updatedAt && <div className="panel-footer">Consulta atualizada em {formatDate(data.updatedAt)}</div>}
         </aside>
-        <div className="map-panel">
-          {import.meta.env.VITE_MAPBOX_TOKEN ? <Suspense fallback={<MapPlaceholder loading />}>
-            <OccurrenceMap occurrences={data.items} selectedId={selectedId} onSelect={onSelect} onBoundsChange={onBoundsChange} />
-          </Suspense> : <MapPlaceholder />}
-          <div className="map-caption"><Layers2 size={15} /><span>Mapa de ocorrências</span><span className="caption-separator" /><span>Blumenau</span></div>
-        </div>
-      </section>
-
-      <section className="about-strip" id="sobre">
-        <div><span className="about-icon"><ShieldCheck size={22} /></span><div><h2>Informação compartilhada, cidade mais conectada.</h2>
-          <p>Um projeto acadêmico colaborativo para facilitar a consulta de situações de perigo. Os relatos não substituem orientações dos órgãos responsáveis.</p></div></div>
-        <span className="project-tag">PROJETO APLICADO · SENAI</span>
+        {selected && <div className="details-overlay" key={selected.id}>
+          <OccurrenceDetails occurrence={selected} onClose={() => closeDetails(selected.id)} />
+        </div>}
       </section>
     </main>
-    <footer className="site-footer"><span>AEX · Blumenau, Santa Catarina</span><span>Construído para a comunidade.</span></footer>
+    <footer className="site-footer"><span>OlhaBlu · Blumenau, Santa Catarina</span><span>Construído para a comunidade.</span></footer>
   </div>
 }

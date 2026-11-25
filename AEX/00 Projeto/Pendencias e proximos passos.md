@@ -8,7 +8,7 @@ Marque uma tarefa quando houver evidência do resultado. Registre a evidência n
 
 - [ ] **INF-01** Clonar ou atualizar o repositório no computador de destino. Conferir a revisão e abrir o vault interno no Obsidian. [[04 Infra/GitHub e automacao]]
 - [ ] **INF-02** Subir a aplicação em Docker Engine com Compose v2. Confirmar `db`, `api` e `web` saudáveis e obter os sete tipos em `/api/occurrence-types`. Executar também o job Compose do CI quando a revisão estiver no GitHub. [[04 Infra/Docker e Caddy]]
-- [ ] **FE-01** Configurar token público Mapbox e verificar mapa e lista no desktop e no celular. Mover e ampliar o mapa, aplicar filtros, selecionar marcador e comparar a área consultada. [[02 Frontend/Mapa e consulta]]
+- [ ] **FE-01** Concluir a validação do mapa e da lista contra a API com MySQL populado. O token público, o mapa real, o zoom, os filtros e a seleção já foram verificados em desktop e celular com respostas simuladas da API. Conferir o recorte em movimento e a recuperação após indisponibilidade na integração real. [[02 Frontend/Mapa e consulta]]
 - [ ] **BE-01** Verificar migração em MySQL real e cenário com dados simulados, área vazia e queda do banco. Confirmar que a indisponibilidade volta como erro recuperável e que a consulta retoma após recuperação. [[03 Backend/Banco e migracoes]]
 
 ## 2 · Fechar decisões para começar a escrita

@@ -14,7 +14,7 @@ type Props = {
 export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChange }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
-  const markers = useRef<mapboxgl.Marker[]>([])
+  const markers = useRef(new Map<string, mapboxgl.Marker>())
   const [error, setError] = useState(false)
   const [ready, setReady] = useState(false)
   const token = import.meta.env.VITE_MAPBOX_TOKEN
@@ -25,8 +25,20 @@ export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChang
     try {
       instance = new mapboxgl.Map({
         container: container.current, accessToken: token,
-        style: 'mapbox://styles/mapbox/light-v11', center: [-49.0661, -26.9194],
-        zoom: 12.5, minZoom: 8, renderWorldCopies: false,
+        style: 'mapbox://styles/mapbox/standard',
+        config: { basemap: {
+          theme: 'monochrome', lightPreset: 'day', show3dObjects: false,
+          showPointOfInterestLabels: false, showTransitLabels: false,
+        } },
+        projection: 'mercator', center: [-49.0661, -26.9194],
+        zoom: 12.5, minZoom: 8, renderWorldCopies: false, pitchWithRotate: false, dragRotate: false,
+        locale: {
+          'NavigationControl.ZoomIn': 'Aproximar',
+          'NavigationControl.ZoomOut': 'Afastar',
+          'GeolocateControl.FindMyLocation': 'Minha localização',
+          'GeolocateControl.LocationNotAvailable': 'Localização indisponível',
+          'AttributionControl.ToggleAttribution': 'Créditos do mapa',
+        },
       })
     } catch {
       setError(true)
@@ -44,37 +56,61 @@ export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChang
         Math.min(180, bounds.getEast()), Math.min(90, bounds.getNorth()),
       ])
     }
-    instance.on('load', () => { setReady(true); setError(false); syncBounds() })
-    instance.on('moveend', syncBounds)
-    instance.on('error', () => setError(true))
+    let loaded = false
+    instance.on('load', () => { loaded = true; setReady(true); setError(false); syncBounds() })
+    instance.on('moveend', () => { if (loaded) syncBounds() })
+    instance.on('error', () => { if (!loaded) setError(true) })
+    const activeMarkers = markers.current
     return () => {
-      markers.current.forEach(marker => marker.remove())
-      markers.current = []
+      activeMarkers.forEach(marker => marker.remove())
+      activeMarkers.clear()
       instance.remove()
       map.current = null
     }
   }, [token, onBoundsChange])
 
   useEffect(() => {
-    markers.current.forEach(marker => marker.remove())
-    markers.current = []
-    if (!map.current || !ready) return
-    markers.current = occurrences.map(occurrence => {
-      const element = document.createElement('button')
-      element.type = 'button'
-      element.className = `map-marker ${occurrence.id === selectedId ? 'map-marker-selected' : ''}`
-      element.textContent = '!'
+    const instance = map.current
+    if (!instance || !ready) return
+    const visibleIds = new Set(occurrences.map(occurrence => occurrence.id))
+    for (const [id, marker] of markers.current) {
+      if (!visibleIds.has(id)) {
+        marker.remove()
+        markers.current.delete(id)
+      }
+    }
+    for (const occurrence of occurrences) {
+      let marker = markers.current.get(occurrence.id)
+      if (!marker) {
+        const button = document.createElement('button')
+        button.type = 'button'
+        const glyph = document.createElement('span')
+        glyph.className = 'incident-glyph'
+        glyph.setAttribute('aria-hidden', 'true')
+        button.append(glyph)
+        button.addEventListener('click', () => onSelect(occurrence.id))
+        marker = new mapboxgl.Marker({ element: button }).setLngLat([occurrence.longitude, occurrence.latitude]).addTo(instance)
+        markers.current.set(occurrence.id, marker)
+      }
+      const element = marker.getElement()
+      const selected = occurrence.id === selectedId
+      element.classList.add('map-marker')
+      element.dataset.incidentType = occurrence.occurrence_type.slug
+      element.classList.toggle('map-marker-selected', selected)
       element.setAttribute('aria-label', `${occurrence.occurrence_type.label}: ${occurrence.description}`)
-      element.addEventListener('click', () => onSelect(occurrence.id))
-      return new mapboxgl.Marker({ element })
-        .setLngLat([occurrence.longitude, occurrence.latitude]).addTo(map.current!)
-    })
-    return () => { markers.current.forEach(marker => marker.remove()); markers.current = [] }
+      element.setAttribute('aria-pressed', String(selected))
+      const position = marker.getLngLat()
+      if (position.lng !== occurrence.longitude || position.lat !== occurrence.latitude) {
+        marker.setLngLat([occurrence.longitude, occurrence.latitude])
+      }
+    }
   }, [occurrences, selectedId, onSelect, ready])
 
   if (!token) return <MapPlaceholder />
   return <div className="map-canvas-wrap">
-    <div ref={container} className="map-canvas" aria-label="Mapa de ocorrências urbanas" />
+    {!ready && <MapPlaceholder loading={!error} />}
+    <div ref={container} className={ready ? 'map-canvas' : 'map-canvas map-canvas-loading'}
+      aria-label="Mapa de ocorrências urbanas" />
     {error && <div className="map-error" role="alert">Não foi possível carregar o mapa. Consulte a lista ou recarregue a página.</div>}
   </div>
 }

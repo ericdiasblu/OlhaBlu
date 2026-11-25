@@ -4,14 +4,14 @@
 
 | Frente | O que existe | Evidência | O que falta |
 | --- | --- | --- | --- |
-| Frontend | Tela responsiva, filtros, detalhes, polling e Mapbox condicionado a token | Tela aberta no navegador local. Build TypeScript/Vite aprovado | Mapa real, busca por endereço e integração completa com dados |
+| Frontend | Home responsiva OlhaBlu, filtros, detalhes, polling e Mapbox Standard monocromático | Mapa real e consulta com respostas simuladas em Edge a 1440, 390 e 320 px. Build TypeScript/Vite aprovado | Validar consulta com API e MySQL populado e implementar busca por endereço |
 | Backend | API de consulta, regras de visibilidade, migração inicial, catálogo e dados de demonstração opcionais | API inicializada e proxy respondeu. `/health/live` retornou 200; prontidão e consulta retornaram 503 sem banco. SQL da migração gerado | Migração aplicada em MySQL real e consulta com dados validada |
 | Docker e Caddy | Compose de três serviços, imagens com múltiplos estágios e job de smoke test | Compose aceito nos modos local e HTTPS. Caddy aceito. Imagens e pacotes Python verificados para Linux x64 e ARM64 | Build e execução reais de containers, com resultado registrado |
-| Segurança npm | Registro fixado e verificação de origem no CI e no Docker | 116 entradas auditadas, 6.538 arquivos idênticos à instalação limpa, assinaturas válidas e zero alertas conhecidos na consulta | Repetir a auditoria quando o lockfile mudar |
+| Segurança npm | Registro fixado e verificação de origem no CI e no Docker | Verificação de origem e integridade do lockfile aprovada e zero vulnerabilidades reportadas pelo npm audit em 25/11/2026 | Repetir a auditoria quando o lockfile mudar |
 | GitHub | Repositório privado `ericdiasblu/AEX` e branch `main` | Commit inicial `0f0fcbb` confirmado no remoto na criação | Atualizar a cópia do computador que vai executar os containers |
 | Produção | Arquitetura de referência com VM Azure, DNS, Caddy e NSG | Documento v1.2 consolidado | Recursos provisionados, validação de TLS, backups, deploy e operação |
 
-**Próximo marco** · MySQL, API e Caddy saudáveis em Docker real, catálogo com sete tipos pelo proxy, mapa preenchido com exemplos sinalizados após configurar o token.
+**Próximo marco** · MySQL, API e Caddy saudáveis em Docker real, catálogo com sete tipos pelo proxy e mapa preenchido com exemplos sinalizados retornados pelo banco.
 
 ## Como ler os estados
 

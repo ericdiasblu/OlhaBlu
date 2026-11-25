@@ -4,12 +4,12 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4',
   { variants: {
     variant: {
-      default: 'bg-primary text-primary-foreground hover:bg-emerald-800',
-      outline: 'border border-border bg-white text-foreground hover:bg-emerald-50',
-      ghost: 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+      default: 'bg-primary text-primary-foreground hover:bg-(--hover) hover:text-primary',
+      outline: 'border border-border bg-white text-foreground hover:bg-(--hover)',
+      ghost: 'text-muted-foreground hover:bg-(--hover) hover:text-foreground',
     },
     size: { default: 'h-10 px-4', sm: 'h-9 px-3 text-xs', icon: 'size-10' },
   }, defaultVariants: { variant: 'default', size: 'default' } },

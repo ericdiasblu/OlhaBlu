@@ -9,6 +9,6 @@ O mapa abre em Blumenau com um token público Mapbox. A movimentação define o 
 - O polling roda a cada 15 segundos com a aba visível e conexão disponível. Cada resultado substitui a lista e os marcadores. A interface pede aproximação do mapa quando há mais de 100 registros no recorte.
 - Detalhes exibem origem, situação, datas e indicação **SIMULAÇÃO** para os exemplos. Datas são exibidas no fuso de São Paulo.
 - `VITE_MAPBOX_TOKEN` é público e entra no build. Defina em `frontend/.env` para Vite local ou no `.env` da raiz para Compose e recompile a imagem.
-- Sem token, a interface exibe o estado de indisponibilidade do mapa. Com o banco ativo, a consulta pela lista continua disponível.
+- Sem token, a interface exibe um mapa ilustrativo identificado. Com o banco ativo, a consulta pela lista continua disponível.
 
-Validação pendente em navegador com token, banco populado, zoom, filtros, marcadores e rede indisponível. Veja **FE-01** e **FE-03** em [[00 Projeto/Pendencias e proximos passos]].
+Em 25/11/2026, o Mapbox Standard monocromático carregou com token público. Zoom, filtros, seleção e recuperação de erro foram exercitados com respostas simuladas da API. Os dropdowns também foram testados por teclado em desktop e celular. Ainda falta repetir o fluxo com banco populado e testar a recuperação com os serviços reais. Veja **FE-01** e **FE-03** em [[00 Projeto/Pendencias e proximos passos]].
