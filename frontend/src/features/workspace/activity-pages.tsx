@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Bell, ClipboardList, FileText, Plus, ShieldCheck } from 'lucide-react'
+import { Bell, ClipboardList, FileText, MapPin, Pencil, Plus, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FilterSelect } from '@/components/ui/filter-select'
 import { routes } from '@/app/navigation'
@@ -19,34 +19,50 @@ function ReportSummary({ report }: { report: Report }) {
   </>
 }
 
-export function ReportsPage({ flow, onEdit, message }: { flow: Workspace; onEdit: (report: Report) => void; message?: string }) {
+export function ReportsPage({ flow, onEdit, onCreate, message }: {
+  flow: Workspace; onEdit: (report: Report) => void; onCreate: () => void; message?: string
+}) {
   const [filter, setFilter] = useState<Outcome | 'all'>('all')
   const own = flow.reports.filter(report => report.authorId === flow.account?.id)
   const visible = own.filter(report => filter === 'all' || report.status === filter)
+  const hasReports = own.length > 0
+  const createAction = <Button asChild><a href={routes.report} onClick={onCreate}><Plus aria-hidden="true" /> Registrar ocorrência</a></Button>
   return <main className="workspace" id="conteudo">
     <WorkspaceHeading title="Meus relatos" description="Acompanhe o andamento e as decisões sobre as ocorrências que você enviou."
-      action={<Button asChild><a href={routes.report}><Plus aria-hidden="true" /> Registrar ocorrência</a></Button>} />
+      action={hasReports ? createAction : undefined} />
     {message && <p className="workspace-notice" role="status">{message}</p>}
-    <section className="workspace-panel workflow-panel" aria-label="Lista de meus relatos">
-      <div className="workflow-toolbar">
+    <section className="workspace-panel workflow-panel reports-panel" aria-label="Lista de meus relatos">
+      {hasReports && <div className="workflow-toolbar">
         <h2>Histórico de relatos</h2>
         <FilterSelect<Outcome | 'all'> id="report-status" label="Situação" value={filter} onChange={setFilter}
           options={[{ value: 'all', label: 'Todas' }, { value: 'pending', label: outcomes.pending },
             { value: 'published', label: outcomes.published }, { value: 'revision', label: outcomes.revision },
             { value: 'rejected', label: outcomes.rejected }]} />
-      </div>
-      {visible.length ? <ul className="workflow-list">{visible.map(report => <li key={report.id}>
+      </div>}
+      {visible.length ? <ul className="workflow-list">{visible.map(report => <li className="report-list-row" key={report.id}>
         <details className="workflow-disclosure">
-          <summary><ReportSummary report={report} /></summary>
+          <summary>
+            <span className="report-summary">
+              <strong>{report.type.label}</strong>
+              <span className="report-neighborhood"><MapPin size={15} aria-hidden="true" /> {report.place.name}</span>
+              <time className="workflow-row-meta" dateTime={report.createdAt}>{formatDate(report.createdAt)}</time>
+            </span>
+            <ReportStatus status={report.status} />
+          </summary>
           <div className="workflow-expanded">
             <p className="report-description">{report.description}</p>
             {report.photo && <PhotoPreview photo={report.photo} />}
             {report.reason && <p className="workspace-notice">{report.reason}</p>}
-            {report.status === 'revision' && <Button type="button" variant="outline" onClick={() => onEdit(report)}>Corrigir relato</Button>}
           </div>
         </details>
-      </li>)}</ul> : <WorkspaceEmpty icon={<FileText />} title={own.length ? 'Nenhum relato nesta situação' : 'Seus relatos aparecem aqui'}
-        description={own.length ? 'Escolha outra situação para consultar o histórico.' : 'Registre uma ocorrência para acompanhar a análise.'} />}
+        {report.status === 'revision' && <div className="report-row-actions">
+          <Button type="button" variant="outline" onClick={() => onEdit(report)}><Pencil aria-hidden="true" /> Corrigir relato</Button>
+        </div>}
+      </li>)}</ul> : <div className={hasReports ? undefined : 'reports-first-use'}>
+        <WorkspaceEmpty icon={<FileText aria-hidden="true" />} title={hasReports ? 'Nenhum relato nesta situação' : 'Você ainda não enviou nenhum relato'}
+          description={hasReports ? 'Escolha outra situação para consultar o histórico.' : 'Depois de registrar uma ocorrência, acompanhe a análise por aqui.'}
+          action={hasReports ? undefined : createAction} />
+      </div>}
     </section>
   </main>
 }

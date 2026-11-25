@@ -65,11 +65,6 @@ a[data-slot="button"][data-variant="default"]:hover { color: var(--focus); }
 .brand { justify-self: start; }
 .brand-mark { width: 40px; height: auto; flex: none; }
 .brand strong { font-size: 29px; font-weight: 780; letter-spacing: -.035em; line-height: 1; }
-.header-nav { display: flex; gap: 8px; align-items: center; font-size: 14px; }
-.header-nav a, .header-nav .nav-label { display: grid; place-items: center; min-height: 44px; padding-inline: 14px; border-radius: 20px; }
-.header-nav .nav-active { background: var(--selected); }
-.header-nav a:hover { background: var(--hover); }
-.city-label { justify-self: end; font-size: 14px; font-weight: 550; }
 
 .explorer {
   position: relative;
@@ -231,7 +226,6 @@ a[data-slot="button"][data-variant="default"]:hover { color: var(--focus); }
   .brand-mark { width: 38px; }
   .brand strong { font-size: 25px; }
   .header-nav { display: none; }
-  .city-label { font-size: 13px; }
 
   .explorer { grid-template: "map" clamp(300px, 43svh, 440px) "results" auto / minmax(0, 1fr); }
   .map-canvas .mapboxgl-ctrl-top-right { right: auto; left: var(--map-inset); flex-direction: column; }

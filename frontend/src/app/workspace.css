@@ -1,26 +1,41 @@
-.header-account, .member-nav {
-  justify-self: end;
+.site-header {
+  --nav-gap: 6px;
+  --nav-padding: 12px;
+}
+.header-nav, .header-account, .member-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--nav-gap);
 }
+.header-nav { justify-self: center; }
+.header-account, .member-nav { justify-self: end; }
 
-.header-account a, .member-nav > a, .member-nav > button,
 .workspace [data-slot="button"], .workspace-dialog [data-slot="button"], .detail-actions [data-slot="button"] {
   min-height: 44px;
   border-radius: 8px;
 }
-.member-nav > a:not(.report-link) {
+.site-header .nav-item {
   display: inline-flex;
+  justify-content: center;
   align-items: center;
   gap: 6px;
-  padding: 8px 10px;
+  min-height: 44px;
+  padding-inline: var(--nav-padding);
+  border-radius: 8px;
   white-space: nowrap;
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 600;
+  line-height: 1.25;
+  transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out);
 }
-.member-nav > a:not(.report-link):hover, .member-nav > a[aria-current="page"] { background: var(--hover); }
+.nav-item:not([data-variant="default"]):hover { background: var(--hover); color: var(--focus); }
+.nav-item:not([data-variant="default"])[aria-current="page"] { background: var(--selected); color: var(--focus); }
+.nav-item svg { flex: none; }
+.site-header .nav-icon { position: relative; min-width: 44px; padding-inline: 0; }
 .unread-count {
+  position: absolute;
+  top: 2px;
+  right: 0;
   min-width: 20px;
   padding-inline: 4px;
   border-radius: 12px;
@@ -30,6 +45,23 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.profile-menu { position: relative; z-index: 10; }
+.profile-menu summary { cursor: pointer; list-style: none; }
+.profile-menu summary::-webkit-details-marker { display: none; }
+.profile-menu[open] summary { background: var(--selected); color: var(--focus); }
+.profile-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 162px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--panel-shadow);
+}
+.site-header .profile-options .nav-item { justify-content: flex-start; }
 
 .workspace {
   max-width: 1100px;
@@ -179,6 +211,26 @@
 .workflow-expanded button { justify-self: start; }
 .workflow-row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px; font-weight: 650; font-size: 15px; }
 .workflow-row-meta { display: block; color: var(--muted); margin-top: 4px; font-size: 13px; }
+.reports-first-use .workspace-empty {
+  justify-items: center;
+  gap: 12px;
+  padding: clamp(32px, 6vw, 72px) 20px;
+  text-align: center;
+}
+.reports-first-use .workspace-empty [data-slot="button"] { margin-top: 4px; }
+.report-list-row .workflow-disclosure summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding-block: 16px;
+}
+.report-list-row .workflow-disclosure summary::after { top: 26px; }
+.report-summary { display: grid; gap: 3px; }
+.report-summary strong { font-size: 15px; font-weight: 650; }
+.report-summary .workflow-row-meta { margin-top: 0; }
+.report-neighborhood { display: flex; align-items: center; gap: 5px; font-size: 14px; }
+.report-neighborhood svg { flex: none; color: var(--focus); }
+.report-row-actions { padding: 0 16px 14px; }
 .workflow-static-row > p { margin-top: 4px; }
 .workspace-status {
   display: inline-block;
@@ -228,18 +280,24 @@
   .member-nav { justify-content: end; flex-wrap: wrap; }
 }
 @media (max-width: 760px) {
-  .site-header { min-height: 60px; }
-  .header-account { gap: 4px; }
-  .header-account a { padding-inline: 10px; font-size: 13px; }
-  .site-header.member-header { position: relative; grid-template-columns: minmax(0, 1fr); }
-  .member-header .header-nav { display: none; }
+  .site-header { min-height: 60px; --nav-gap: 4px; --nav-padding: 8px; }
+  .site-header .nav-item { font-size: 13px; }
+  .site-header.member-header { grid-template-columns: auto minmax(0, 1fr); }
+  .member-header .header-nav { display: flex; justify-self: stretch; flex-wrap: wrap; }
   .member-header .brand { min-height: 44px; }
-  .member-nav { justify-self: stretch; justify-content: start; gap: 2px 4px; }
-  .member-nav > a:not(.report-link), .member-nav > a.report-link, .member-nav > button { padding-inline: 7px; font-size: 13px; }
-  .member-nav .member-logout { position: absolute; top: 6px; right: 12px; }
+  .member-nav { justify-self: end; row-gap: 2px; }
   .report-link-extra { display: none; }
   .workspace { padding: 22px 12px 36px; gap: 14px; }
   .workspace-heading h1 { font-size: 26px; }
   .workspace-panel:not(.workflow-panel) { padding: 16px; }
   .workspace-columns, .moderation-columns { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@media (max-width: 360px) {
+  .site-header .report-link { min-width: 44px; padding-inline: 0; }
+  .report-link-label { display: none; }
+}
+@media (max-width: 520px) {
+  .reports-panel .workflow-toolbar { display: grid; gap: 8px; }
+  .reports-panel .workflow-toolbar > .filter-select { width: 100%; }
+  .report-list-row .workflow-disclosure summary { grid-template-columns: minmax(0, 1fr); justify-items: start; }
 }
