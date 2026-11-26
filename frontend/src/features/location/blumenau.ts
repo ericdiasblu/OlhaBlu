@@ -16,7 +16,13 @@ const extent = municipalBoundary.reduce<[number, number, number, number]>((bound
   return bounds
 }, [Infinity, Infinity, -Infinity, -Infinity])
 
-export const blumenauMapBounds = extent
+const [west, south, east, north] = extent
+export const blumenauMapBounds: [number, number, number, number] = [
+  west - 0.28,
+  south - 0.20,
+  east + 0.28,
+  north + 0.20,
+]
 
 function orientRing(ring: number[][], counterclockwise: boolean) {
   let area = 0
@@ -26,7 +32,6 @@ function orientRing(ring: number[][], counterclockwise: boolean) {
   return (area > 0) === counterclockwise ? ring : [...ring].reverse()
 }
 
-const [west, south, east, north] = extent
 const frame = [[west - 1, south - 1], [east + 1, south - 1], [east + 1, north + 1], [west - 1, north + 1], [west - 1, south - 1]]
 export const outsideBlumenau = {
   type: 'Feature' as const,

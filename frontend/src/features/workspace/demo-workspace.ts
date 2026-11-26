@@ -246,10 +246,9 @@ export function useDemoWorkspace() {
       setNotices([])
       return
     }
+    void refreshResidentData().catch(() => {})
     if (account.role === 'moderator') {
       void refreshModerationData().catch(() => {})
-    } else {
-      void refreshResidentData().catch(() => {})
     }
   }, [account, refreshModerationData, refreshResidentData])
 
@@ -299,6 +298,9 @@ export function useDemoWorkspace() {
       await apiPost<ApiReport>('/occurrences', body)
     }
     await refreshResidentData()
+    if (account?.role === 'moderator') {
+      await refreshModerationData()
+    }
   }
 
   async function reviewReport(

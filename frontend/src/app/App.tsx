@@ -60,12 +60,10 @@ export function App() {
   }
 
   const memberNav = flow.account && <nav className="member-nav" aria-label="Área da conta">
-    {flow.account.role === 'resident' && <>
-      <a className="nav-item nav-icon notification-link" href={routes.alerts} aria-current={route === 'alerts' ? 'page' : undefined}
-        aria-label={unread ? `Alertas (${unread} ${unread === 1 ? 'não lido' : 'não lidos'})` : 'Alertas'} title="Alertas">
-        <Bell size={20} strokeWidth={1.75} aria-hidden="true" /> {unread > 0 && <span className="unread-count" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
-      </a>
-    </>}
+    <a className="nav-item nav-icon notification-link" href={routes.alerts} aria-current={route === 'alerts' ? 'page' : undefined}
+      aria-label={unread ? `Alertas (${unread} ${unread === 1 ? 'não lido' : 'não lidos'})` : 'Alertas'} title="Alertas">
+      <Bell size={20} strokeWidth={1.75} aria-hidden="true" /> {unread > 0 && <span className="unread-count" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
+    </a>
     <details className="profile-menu" ref={profile} onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false
     }} onKeyDown={event => {
@@ -93,18 +91,18 @@ export function App() {
     </main>
   } else if (route === 'login' || route === 'signup' || guarded) {
     page = <AuthPage key={route} mode={route === 'signup' ? 'signup' : 'login'} flow={flow} onSignIn={signIn} requiresAccount={guarded} />
-  } else if (route === 'report' && flow.account?.role === 'resident') {
+  } else if (route === 'report' && flow.account) {
     page = <ReportPage key={editing?.id ?? 'new'} previous={editing} types={flow.types} onSubmit={async draft => {
       await flow.submitReport(draft, editing?.id)
       setEditingId(undefined)
       setMessage(editing ? 'Correção enviada para análise.' : 'Relato enviado para análise.')
       navigate('reports')
     }} />
-  } else if (route === 'reports' && flow.account?.role === 'resident') {
+  } else if (route === 'reports' && flow.account) {
     page = <ReportsPage flow={flow} onEdit={editReport} onCreate={() => setEditingId(undefined)} message={message} />
   } else if (route === 'moderation' && flow.account?.role === 'moderator') {
     page = <ModerationPage flow={flow} />
-  } else if (route === 'alerts' && flow.account?.role === 'resident') {
+  } else if (route === 'alerts' && flow.account) {
     page = <AlertsPage flow={flow} />
   } else if (route === 'about') {
     page = <main id="conteudo" className="workspace">
@@ -138,7 +136,7 @@ export function App() {
       </a>
       <nav aria-label="Navegação principal" className="header-nav">
         <a className="nav-item" href={routes.map} aria-current={route === 'map' ? 'page' : undefined}>Explorar mapa</a>
-        {flow.account?.role === 'resident' && <a className="nav-item" href={routes.reports} aria-current={route === 'reports' ? 'page' : undefined}>Meus relatos</a>}
+        {flow.account && <a className="nav-item" href={routes.reports} aria-current={route === 'reports' ? 'page' : undefined}>Meus relatos</a>}
         {flow.account?.role === 'moderator' && <a className="nav-item" href={routes.moderation} aria-current={route === 'moderation' ? 'page' : undefined}>Moderação</a>}
         <a className="nav-item" href={routes.about} aria-current={route === 'about' ? 'page' : undefined}>Sobre</a>
       </nav>
@@ -155,7 +153,7 @@ export function App() {
       <MapPage flow={flow} active={route === 'map'} />
     </div>}
     {page}
-    {route === 'map' && flow.account?.role === 'resident' && <a className="map-report-action" href={routes.report}
+    {route === 'map' && flow.account && <a className="map-report-action" href={routes.report}
       aria-label="Registrar ocorrência" title="Registrar ocorrência" onClick={() => setEditingId(undefined)}>
       <Plus size={25} aria-hidden="true" />
     </a>}

@@ -69,7 +69,7 @@ export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChang
           style: 'mapbox://styles/mapbox/standard',
           config: { basemap: basemapConfig(document.documentElement.dataset.theme === 'dark') },
           projection: 'mercator', center: [-49.0661, -26.9194],
-          zoom: 12.5, maxBounds: blumenauMapBounds, renderWorldCopies: false, pitchWithRotate: false, dragRotate: false,
+          zoom: 11.8, minZoom: 9.5, maxBounds: blumenauMapBounds, renderWorldCopies: false, pitchWithRotate: false, dragRotate: false,
           locale: {
             'NavigationControl.ZoomIn': 'Aproximar',
             'NavigationControl.ZoomOut': 'Afastar',
@@ -97,7 +97,7 @@ export function OccurrenceMap({ occurrences, selectedId, onSelect, onBoundsChang
       let loaded = false
       instance.on('load', () => {
         instance.addSource(municipalityMask, { type: 'geojson', data: outsideBlumenau })
-        instance.addLayer({ id: municipalityMask, type: 'fill', source: municipalityMask, paint: { 'fill-color': maskColor() } })
+        instance.addLayer({ id: municipalityMask, type: 'fill', source: municipalityMask, paint: { 'fill-color': maskColor(), 'fill-opacity': 0.78 } })
         instance.addSource(neighborhoodLabels, { type: 'geojson', data: blumenauNeighborhoodLabels })
         instance.addLayer({
           id: neighborhoodLabels, type: 'symbol', source: neighborhoodLabels,
