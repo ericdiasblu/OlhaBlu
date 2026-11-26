@@ -1,11 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { ArrowLeft, ImagePlus, MapPin, Maximize2, X } from 'lucide-react'
+import { ArrowLeft, Crosshair, ImagePlus, MapPin, Maximize2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FilterSelect } from '@/components/ui/filter-select'
 import { routes } from '@/app/navigation'
 import { apiUrl } from '@/lib/api'
 import type { OccurrenceType } from '@/features/occurrences/types'
-import { isInBlumenau, type Place } from '@/features/location/blumenau'
+import { isInBlumenau, reverseGeocode, type Place } from '@/features/location/blumenau'
 import type { Report, ReportDraft } from './demo-workspace'
 import { PlacePicker, WorkspaceHeading } from './workspace-ui'
 
@@ -67,6 +67,7 @@ export function ReportPage({ previous, types, onSubmit }: {
   const [submitting, setSubmitting] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerCenter, setPickerCenter] = useState<Place>()
+  const [locating, setLocating] = useState(false)
   const reviewHeading = useRef<HTMLHeadingElement>(null)
   const [locationError, setLocationError] = useState('')
   const pickLocation = useCallback((point: Omit<Place, 'name'>) => {
@@ -76,7 +77,56 @@ export function ReportPage({ previous, types, onSubmit }: {
     }
     setLocationError('')
     setPlace({ ...point, name: 'Ponto selecionado no mapa' })
+    void reverseGeocode(point).then(label => {
+      if (label) {
+        setPlace(current => (
+          current && current.latitude === point.latitude && current.longitude === point.longitude
+            ? { ...current, name: label }
+            : current
+        ))
+      }
+    })
   }, [])
+
+  function useCurrentLocation() {
+    if (!('geolocation' in navigator)) {
+      setLocationError('Geolocalização não disponível neste navegador.')
+      return
+    }
+    setLocationError('')
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const point = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+        if (!isInBlumenau(point)) {
+          setLocating(false)
+          setLocationError('Sua localização atual está fora dos limites de Blumenau.')
+          return
+        }
+        const initialPlace: Place = { ...point, name: 'Minha localização atual' }
+        setPlace(initialPlace)
+        setPickerCenter(initialPlace)
+        void reverseGeocode(point)
+          .then(label => {
+            if (label) {
+              const resolved: Place = { ...point, name: label }
+              setPlace(resolved)
+              setPickerCenter(resolved)
+            }
+          })
+          .finally(() => setLocating(false))
+      },
+      err => {
+        setLocating(false)
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationError('Permissão de localização negada. Libere o acesso no navegador ou escolha o local manualmente.')
+        } else {
+          setLocationError('Não foi possível obter sua localização agora. Tente novamente ou escolha no mapa.')
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 },
+    )
+  }
   const type = types.find(option => String(option.id) === typeId)
   const existingPhotoSrc = previous && hasExistingPhoto ? apiUrl(`/occurrences/${previous.id}/photo`) : undefined
 
@@ -128,13 +178,16 @@ export function ReportPage({ previous, types, onSubmit }: {
         {previous?.reason && <p className="workspace-notice">Correção solicitada. {previous.reason}</p>}
         <div className="form-section">
           <h2><MapPin size={19} aria-hidden="true" /> Localização</h2>
-          <PlacePicker id={`${id}-place`} query={query} onQuery={setQuery} onChoose={value => { setPlace(value); setLocationError('') }} selected={place} />
-          {import.meta.env.VITE_MAPBOX_TOKEN && <div>
-            <Button type="button" variant="outline" aria-expanded={pickerOpen} onClick={() => {
+          <PlacePicker id={`${id}-place`} query={query} onQuery={setQuery} onChoose={value => { setPlace(value); setPickerCenter(value); setLocationError('') }} selected={place} />
+          <div className="workspace-actions">
+            <Button type="button" variant="outline" disabled={locating} onClick={useCurrentLocation}>
+              <Crosshair aria-hidden="true" /> {locating ? 'Obtendo localização…' : 'Usar minha localização atual'}
+            </Button>
+            {import.meta.env.VITE_MAPBOX_TOKEN && <Button type="button" variant="outline" aria-expanded={pickerOpen} onClick={() => {
               if (!pickerOpen) setPickerCenter(place)
               setPickerOpen(open => !open)
-            }}>{pickerOpen ? 'Fechar mapa de localização' : 'Escolher ponto no mapa'}</Button>
-          </div>}
+            }}>{pickerOpen ? 'Fechar mapa de localização' : 'Escolher ponto no mapa'}</Button>}
+          </div>
           {pickerOpen && <div className="report-location-picker">
             <p className="field-hint">Marque um ponto dentro de Blumenau ou selecione um bairro na busca acima.</p>
             <div className="report-location-map">

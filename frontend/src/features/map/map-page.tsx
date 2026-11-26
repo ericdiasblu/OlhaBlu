@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { ChevronDown, CircleHelp, MapPinned, RefreshCw, Search, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FilterSelect } from '@/components/ui/filter-select'
@@ -9,7 +9,7 @@ import { useOccurrences } from '@/features/occurrences/use-occurrences'
 import type { Bbox, Filters, Occurrence } from '@/features/occurrences/types'
 import { formatDate } from '@/lib/utils'
 import type { Workspace } from '@/features/workspace/demo-workspace'
-import { isInBlumenau, matchPlaces, type Place } from '@/features/location/blumenau'
+import { isInBlumenau, matchPlaces, searchAddresses, type Place } from '@/features/location/blumenau'
 import { OccurrenceActions } from './occurrence-actions'
 
 const OccurrenceMap = lazy(() => import('@/features/map/occurrence-map').then(module => ({ default: module.OccurrenceMap })))
@@ -25,6 +25,8 @@ export function MapPage({ flow, active }: {
   const [savingMove, setSavingMove] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [remotePlaces, setRemotePlaces] = useState<Place[]>([])
+  const [searchingPlaces, setSearchingPlaces] = useState(false)
   const [center, setCenter] = useState<Place>()
   const [searching, setSearching] = useState(false)
   const [feedback, setFeedback] = useState('')
@@ -41,8 +43,40 @@ export function MapPage({ flow, active }: {
   const error = data.error
   const loading = data.loading
   const types = data.types.length ? data.types : flow.types
-  const results = matchPlaces(query, true)
+  const localResults = matchPlaces(query, true)
+  const seenPlaces = new Set(localResults.map(place => place.name.toLowerCase()))
+  const results = [
+    ...localResults,
+    ...remotePlaces.filter(place => !seenPlaces.has(place.name.toLowerCase())),
+  ]
   const isMoving = Boolean(movingId && selectedId === movingId && flow.account?.role === 'moderator')
+
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (!searching || !import.meta.env.VITE_MAPBOX_TOKEN || trimmed.length < 3) {
+      setRemotePlaces([])
+      setSearchingPlaces(false)
+      return
+    }
+    const controller = new AbortController()
+    setSearchingPlaces(true)
+    const timer = window.setTimeout(() => {
+      void searchAddresses(trimmed, controller.signal)
+        .then(found => {
+          if (!controller.signal.aborted) setRemotePlaces(found)
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setRemotePlaces([])
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSearchingPlaces(false)
+        })
+    }, 300)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [query, searching])
 
   const onPickMove = useCallback((point: { latitude: number; longitude: number }) => {
     if (!isInBlumenau(point)) {
@@ -139,7 +173,7 @@ export function MapPage({ flow, active }: {
           <label htmlFor="map-neighborhood">Bairro ou endereço em Blumenau</label>
           <input id="map-neighborhood" type="search" value={query} autoFocus
             onChange={event => setQuery(event.target.value)} placeholder="Ex. Centro" maxLength={100} />
-          <ul>{results.map(place => <li key={place.name}><button type="button" onClick={() => {
+          <ul>{results.map(place => <li key={`${place.name}-${place.latitude}-${place.longitude}`}><button type="button" onClick={() => {
             setCenter({ ...place })
             setBbox([place.longitude - .014, place.latitude - .014, place.longitude + .014, place.latitude + .014])
             setSelectedId(null)
@@ -149,7 +183,8 @@ export function MapPage({ flow, active }: {
             setSearching(false)
             document.getElementById('map-search-toggle')?.focus({ preventScroll: true })
           }}>{place.name}</button></li>)}</ul>
-          {query.trim() && !results.length && <p className="field-hint" role="status">Nenhum local encontrado.</p>}
+          {searchingPlaces && !results.length && <p className="field-hint" role="status">Buscando endereços em Blumenau…</p>}
+          {query.trim() && !searchingPlaces && !results.length && <p className="field-hint" role="status">Nenhum local encontrado em Blumenau.</p>}
         </div>}
         {feedback && <p className="map-feedback" role="status">{feedback}</p>}
         <div className="status-switch" role="group" aria-label="Situação">

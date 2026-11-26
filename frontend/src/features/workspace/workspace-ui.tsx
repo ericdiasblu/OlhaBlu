@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { MapPin, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { matchPlaces, type Place } from '@/features/location/blumenau'
+import { matchPlaces, searchAddresses, type Place } from '@/features/location/blumenau'
 
 export function WorkspaceHeading({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <div className="workspace-heading">
@@ -20,18 +20,60 @@ export function WorkspaceEmpty({ icon, title, description, action }: { icon: Rea
 export function PlacePicker({ id, query, onQuery, onChoose, selected }: {
   id: string; query: string; onQuery: (value: string) => void; onChoose: (place: Place) => void; selected?: Place
 }) {
-  const matches = matchPlaces(query)
+  const localMatches = matchPlaces(query)
+  const [remoteMatches, setRemoteMatches] = useState<Place[]>([])
+  const [searching, setSearching] = useState(false)
+  const hasMapbox = Boolean(import.meta.env.VITE_MAPBOX_TOKEN)
+
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (!hasMapbox || trimmed.length < 3) {
+      setRemoteMatches([])
+      setSearching(false)
+      return
+    }
+    const controller = new AbortController()
+    setSearching(true)
+    const timer = window.setTimeout(() => {
+      void searchAddresses(trimmed, controller.signal)
+        .then(results => {
+          if (!controller.signal.aborted) setRemoteMatches(results)
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setRemoteMatches([])
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSearching(false)
+        })
+    }, 300)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [query, hasMapbox])
+
+  const seen = new Set(localMatches.map(place => place.name.toLowerCase()))
+  const matches = [
+    ...localMatches,
+    ...remoteMatches.filter(place => !seen.has(place.name.toLowerCase())),
+  ]
+
   return <div className="place-picker">
-    <label htmlFor={id}>Buscar bairro</label>
+    <label htmlFor={id}>{hasMapbox ? 'Buscar rua, endereço ou bairro' : 'Buscar bairro'}</label>
     <div className="place-input"><Search size={17} aria-hidden="true" /><input id={id} type="search" value={query}
-      onChange={event => onQuery(event.target.value)} placeholder="Ex. Centro" autoComplete="off" maxLength={100} /></div>
-    <p className="field-hint">Digite o nome de um dos 35 bairros de Blumenau. A seleção marca um ponto de referência no bairro.</p>
-    {matches.length > 0 && <div className="place-list" aria-label="Bairros encontrados">
-      {matches.map(place => <Button key={place.name} type="button" variant="ghost"
+      onChange={event => onQuery(event.target.value)} placeholder={hasMapbox ? 'Ex. Rua XV de Novembro, Centro' : 'Ex. Centro'} autoComplete="off" maxLength={120} /></div>
+    <p className="field-hint">
+      {hasMapbox
+        ? 'Digite o nome de uma rua, endereço ou bairro em Blumenau.'
+        : 'Digite o nome de um dos 35 bairros de Blumenau. A seleção marca um ponto de referência no bairro.'}
+    </p>
+    {matches.length > 0 && <div className="place-list" aria-label="Locais encontrados">
+      {matches.map(place => <Button key={`${place.name}-${place.latitude}-${place.longitude}`} type="button" variant="ghost"
         aria-pressed={selected?.name === place.name} onClick={() => onChoose(place)}>
         <MapPin aria-hidden="true" /> {place.name}
       </Button>)}
     </div>}
-    {query.trim() && !matches.length && <p className="field-hint" role="status">Nenhum bairro encontrado. Tente outro nome.</p>}
+    {searching && !matches.length && <p className="field-hint" role="status">Buscando endereços em Blumenau…</p>}
+    {query.trim() && !searching && !matches.length && <p className="field-hint" role="status">Nenhum local encontrado em Blumenau. Tente outro termo.</p>}
   </div>
 }

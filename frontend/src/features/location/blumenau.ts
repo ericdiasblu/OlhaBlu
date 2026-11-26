@@ -17,6 +17,7 @@ const extent = municipalBoundary.reduce<[number, number, number, number]>((bound
 }, [Infinity, Infinity, -Infinity, -Infinity])
 
 const [west, south, east, north] = extent
+export const blumenauExtent: [number, number, number, number] = extent
 export const blumenauMapBounds: [number, number, number, number] = [
   west - 0.28,
   south - 0.20,
@@ -82,4 +83,86 @@ export function matchPlaces(query: string, includeStreetExamples = false) {
   return neighborhoods.filter(place => normalize(place.name).includes(term) ||
     (includeStreetExamples && normalize(streetExamples[place.name] ?? '').includes(term)))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+}
+
+type GeocodeFeature = {
+  geometry?: { coordinates?: [number, number] }
+  properties?: {
+    name?: string
+    full_address?: string
+    place_formatted?: string
+    context?: {
+      neighborhood?: { name?: string }
+      street?: { name?: string }
+    }
+  }
+}
+
+function formatGeocodeLabel(feature: GeocodeFeature): string {
+  const props = feature.properties
+  if (!props) return 'Blumenau'
+  const main = props.name?.trim()
+  const neighborhood = props.context?.neighborhood?.name?.trim()
+  if (main && neighborhood && !normalize(main).includes(normalize(neighborhood))) {
+    return `${main}, ${neighborhood}`
+  }
+  if (main) return main
+  if (props.full_address) return props.full_address.replace(/,\s*Blumenau.*$/i, '').trim()
+  return 'Blumenau'
+}
+
+export async function searchAddresses(query: string, signal?: AbortSignal): Promise<Place[]> {
+  const trimmed = query.trim()
+  const token = import.meta.env.VITE_MAPBOX_TOKEN
+  if (!token || trimmed.length < 3) return []
+  const params = new URLSearchParams({
+    q: trimmed,
+    access_token: token,
+    country: 'br',
+    language: 'pt',
+    bbox: blumenauExtent.join(','),
+    proximity: '-49.0661,-26.9194',
+    types: 'address,street,neighborhood,locality,poi',
+    limit: '6',
+    autocomplete: 'true',
+  })
+  const response = await fetch(`https://api.mapbox.com/search/geocode/v6/forward?${params}`, { signal })
+  if (!response.ok) return []
+  const data = await response.json() as { features?: GeocodeFeature[] }
+  const seen = new Set<string>()
+  const places: Place[] = []
+  for (const feature of data.features ?? []) {
+    const coords = feature.geometry?.coordinates
+    if (!coords || coords.length < 2) continue
+    const point = { longitude: coords[0], latitude: coords[1] }
+    if (!isInBlumenau(point)) continue
+    const name = formatGeocodeLabel(feature)
+    const key = normalize(name)
+    if (seen.has(key)) continue
+    seen.add(key)
+    places.push({ name, ...point })
+  }
+  return places
+}
+
+export async function reverseGeocode(point: Coordinates, signal?: AbortSignal): Promise<string | null> {
+  const token = import.meta.env.VITE_MAPBOX_TOKEN
+  if (!token) return null
+  const params = new URLSearchParams({
+    longitude: String(point.longitude),
+    latitude: String(point.latitude),
+    access_token: token,
+    language: 'pt',
+    types: 'address,street,neighborhood',
+    limit: '1',
+  })
+  try {
+    const response = await fetch(`https://api.mapbox.com/search/geocode/v6/reverse?${params}`, { signal })
+    if (!response.ok) return null
+    const data = await response.json() as { features?: GeocodeFeature[] }
+    const first = data.features?.[0]
+    return first ? formatGeocodeLabel(first) : null
+  } catch {
+    return null
+  }
 }
