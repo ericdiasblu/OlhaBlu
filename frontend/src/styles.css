@@ -79,6 +79,9 @@ a[data-slot="button"][data-variant="default"]:hover { color: var(--focus); }
 .skip-link:not(:focus) { clip-path: inset(50%); }
 
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   min-height: 64px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;

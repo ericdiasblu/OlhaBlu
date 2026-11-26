@@ -167,9 +167,5 @@ export function App() {
       aria-label="Registrar ocorrência" title="Registrar ocorrência" onClick={() => setEditingId(undefined)}>
       <Plus size={25} aria-hidden="true" />
     </a>}
-    <footer className="site-footer">
-      <span>OlhaBlu · Blumenau, Santa Catarina</span>
-      <a href={routes.about}>Sobre</a>
-    </footer>
   </div>
 }
