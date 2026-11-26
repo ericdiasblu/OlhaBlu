@@ -60,17 +60,51 @@
 .profile-menu summary { cursor: pointer; list-style: none; }
 .profile-menu summary::-webkit-details-marker { display: none; }
 .profile-menu[open] summary { background: var(--selected); color: var(--focus); }
+.profile-trigger { max-width: 160px; }
+.profile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 540px) {
+  .profile-trigger { min-width: 44px; padding-inline: 0; }
+  .profile-name { display: none; }
+}
 .profile-options {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
   display: grid;
-  min-width: 162px;
-  padding: 4px;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 6px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
   box-shadow: var(--panel-shadow);
+}
+.profile-identity {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.profile-identity strong {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-identity span {
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-role {
+  margin-top: 2px;
+  font-weight: 600;
+  color: var(--focus) !important;
 }
 .site-header .profile-options .nav-item { justify-content: flex-start; }
 .theme-switch {

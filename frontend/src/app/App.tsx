@@ -73,8 +73,18 @@ export function App() {
         event.currentTarget.querySelector('summary')?.focus()
       }
     }}>
-      <summary className="nav-item nav-icon" aria-label="Perfil" title={flow.account.name}><UserRound size={19} aria-hidden="true" /></summary>
+      <summary className="nav-item profile-trigger" aria-label={`Perfil de ${flow.account.name}`} title={`${flow.account.name} (${flow.account.email})`}>
+        <UserRound size={19} aria-hidden="true" />
+        <span className="profile-name">{flow.account.name.split(/\s+/)[0]}</span>
+      </summary>
       <div className="profile-options">
+        <div className="profile-identity">
+          <strong>{flow.account.name}</strong>
+          <span>{flow.account.email}</span>
+          <span className="profile-role">
+            {flow.account.is_primary_admin ? 'Administrador principal' : flow.account.role === 'moderator' ? 'Administrador' : 'Morador'}
+          </span>
+        </div>
         <button type="button" className="nav-item theme-toggle" role="switch" aria-checked={darkTheme}
           onClick={() => setDarkTheme(enabled => !enabled)}>
           <Moon size={16} aria-hidden="true" /> Modo escuro <span className="theme-switch" aria-hidden="true" />
