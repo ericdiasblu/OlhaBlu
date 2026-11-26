@@ -6,10 +6,10 @@ import { MapPlaceholder } from '@/features/map/map-placeholder'
 import { OccurrenceCard } from '@/features/occurrences/occurrence-card'
 import { OccurrenceDetails } from '@/features/occurrences/occurrence-details'
 import { useOccurrences } from '@/features/occurrences/use-occurrences'
-import type { Bbox, Filters } from '@/features/occurrences/types'
+import type { Bbox, Filters, Occurrence } from '@/features/occurrences/types'
 import { formatDate } from '@/lib/utils'
 import type { Workspace } from '@/features/workspace/demo-workspace'
-import { matchPlaces, type Place } from '@/features/location/blumenau'
+import { isInBlumenau, matchPlaces, type Place } from '@/features/location/blumenau'
 import { OccurrenceActions } from './occurrence-actions'
 
 const OccurrenceMap = lazy(() => import('@/features/map/occurrence-map').then(module => ({ default: module.OccurrenceMap })))
@@ -20,13 +20,20 @@ export function MapPage({ flow, active }: {
   const [bbox, setBbox] = useState<Bbox>([-49.15, -27, -48.98, -26.82])
   const [filters, setFilters] = useState<Filters>({ typeId: '', status: 'active', freshness: 'current' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [movingId, setMovingId] = useState<string | null>(null)
+  const [draftPoint, setDraftPoint] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [savingMove, setSavingMove] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [center, setCenter] = useState<Place>()
   const [searching, setSearching] = useState(false)
   const [feedback, setFeedback] = useState('')
   const onBoundsChange = useCallback((bounds: Bbox) => setBbox(bounds), [])
-  const onSelect = useCallback((id: string) => setSelectedId(current => current === id ? null : id), [])
+  const onSelect = useCallback((id: string) => {
+    setMovingId(null)
+    setDraftPoint(null)
+    setSelectedId(current => current === id ? null : id)
+  }, [])
   const data = useOccurrences(bbox, filters, active)
   const items = data.items
   const selected = items.find(occurrence => occurrence.id === selectedId)
@@ -35,14 +42,56 @@ export function MapPage({ flow, active }: {
   const loading = data.loading
   const types = data.types.length ? data.types : flow.types
   const results = matchPlaces(query, true)
+  const isMoving = Boolean(movingId && selectedId === movingId && flow.account?.role === 'moderator')
+
+  const onPickMove = useCallback((point: { latitude: number; longitude: number }) => {
+    if (!isInBlumenau(point)) {
+      setFeedback('Esse ponto fica fora de Blumenau. Clique em um local dentro do município.')
+      return
+    }
+    setDraftPoint(point)
+    setFeedback('Novo ponto selecionado. Clique em Salvar posição para confirmar.')
+  }, [])
+
+  function startMove(occurrence: Occurrence) {
+    setMovingId(occurrence.id)
+    setDraftPoint({ latitude: occurrence.latitude, longitude: occurrence.longitude })
+    setFeedback('Clique no mapa para escolher a nova posição da ocorrência.')
+  }
+
+  function cancelMove() {
+    setMovingId(null)
+    setDraftPoint(null)
+    setFeedback('')
+  }
+
+  async function saveMove(occurrence: Occurrence) {
+    if (!draftPoint || savingMove) return
+    setSavingMove(true)
+    try {
+      await flow.updateOccurrenceLocation(occurrence.id, draftPoint.latitude, draftPoint.longitude)
+      setMovingId(null)
+      setDraftPoint(null)
+      setFeedback('Posição da ocorrência atualizada.')
+      data.refresh()
+    } catch (cause) {
+      setFeedback(cause instanceof Error ? cause.message : 'Não foi possível mover a ocorrência.')
+    } finally {
+      setSavingMove(false)
+    }
+  }
 
   function updateFilters(next: Partial<Filters>) {
     setSelectedId(null)
+    setMovingId(null)
+    setDraftPoint(null)
     setFilters(current => ({ ...current, ...next }))
   }
 
   function closeDetails(id: string) {
     setSelectedId(null)
+    setMovingId(null)
+    setDraftPoint(null)
     document.getElementById(`occurrence-${id}`)?.focus({ preventScroll: true })
   }
 
@@ -62,7 +111,16 @@ export function MapPage({ flow, active }: {
     <section className="explorer" aria-label="Consulta de ocorrências">
       <div className="map-panel">
         {import.meta.env.VITE_MAPBOX_TOKEN ? <Suspense fallback={<MapPlaceholder loading />}>
-          <OccurrenceMap occurrences={items} center={center} selectedId={selectedId} onSelect={onSelect} onBoundsChange={onBoundsChange} active={active} />
+          <OccurrenceMap
+            occurrences={items}
+            center={center}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onBoundsChange={onBoundsChange}
+            point={isMoving ? draftPoint ?? undefined : undefined}
+            onPick={isMoving ? onPickMove : undefined}
+            active={active}
+          />
         </Suspense> : <MapPlaceholder />}
       </div>
       <aside className="occurrence-panel" id="ocorrencias" tabIndex={-1} aria-labelledby="occurrences-title">
@@ -85,6 +143,8 @@ export function MapPage({ flow, active }: {
             setCenter({ ...place })
             setBbox([place.longitude - .014, place.latitude - .014, place.longitude + .014, place.latitude + .014])
             setSelectedId(null)
+            setMovingId(null)
+            setDraftPoint(null)
             setFeedback('Área selecionada: ' + place.name)
             setSearching(false)
             document.getElementById('map-search-toggle')?.focus({ preventScroll: true })
@@ -127,7 +187,18 @@ export function MapPage({ flow, active }: {
               selected={selectedId === occurrence.id} onSelect={() => onSelect(occurrence.id)} />
             {selectedId === occurrence.id && <div className="details-inline">
               <OccurrenceDetails occurrence={occurrence} onClose={() => closeDetails(occurrence.id)}
-                actions={<OccurrenceActions occurrence={occurrence} flow={flow} onFeedback={setFeedback} onUpdated={data.refresh} />} />
+                actions={<OccurrenceActions
+                  occurrence={occurrence}
+                  flow={flow}
+                  onFeedback={setFeedback}
+                  onUpdated={data.refresh}
+                  moving={movingId === occurrence.id}
+                  draftPoint={draftPoint}
+                  savingMove={savingMove}
+                  onStartMove={() => startMove(occurrence)}
+                  onSaveMove={() => void saveMove(occurrence)}
+                  onCancelMove={cancelMove}
+                />} />
             </div>}
           </div>)}
           {loading && items.length === 0 && <div className="empty-state" aria-hidden="true"><RefreshCw className="animate-spin" /></div>}
@@ -137,7 +208,18 @@ export function MapPage({ flow, active }: {
       </aside>
       {selected && <div className="details-overlay" key={selected.id}>
         <OccurrenceDetails occurrence={selected} onClose={() => closeDetails(selected.id)}
-          actions={<OccurrenceActions occurrence={selected} flow={flow} onFeedback={setFeedback} onUpdated={data.refresh} />} />
+          actions={<OccurrenceActions
+            occurrence={selected}
+            flow={flow}
+            onFeedback={setFeedback}
+            onUpdated={data.refresh}
+            moving={movingId === selected.id}
+            draftPoint={draftPoint}
+            savingMove={savingMove}
+            onStartMove={() => startMove(selected)}
+            onSaveMove={() => void saveMove(selected)}
+            onCancelMove={cancelMove}
+          />} />
       </div>}
     </section>
   </main>

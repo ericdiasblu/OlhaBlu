@@ -178,6 +178,12 @@ class ResolutionDecisionRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=300)
 
 
+class LocationUpdateRequest(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    place_name: str | None = Field(default=None, max_length=120)
+
+
 class ModerationQueueResponse(BaseModel):
     pending_reports: list[ReportRead]
     pending_complaints: list[ModerationComplaintRead]

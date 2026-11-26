@@ -340,6 +340,19 @@ export function useDemoWorkspace() {
     await refreshModerationData()
   }
 
+  async function updateOccurrenceLocation(
+    occurrenceId: string,
+    latitude: number,
+    longitude: number,
+    placeName?: string,
+  ): Promise<void> {
+    await apiPatch(`/moderation/occurrences/${occurrenceId}/location`, {
+      latitude,
+      longitude,
+      ...(placeName ? { place_name: placeName } : {}),
+    })
+  }
+
   async function contribute(id: string, kind: 'confirmed' | 'resolved'): Promise<void> {
     await apiPost(`/occurrences/${id}/contributions`, { kind })
   }
@@ -395,6 +408,7 @@ export function useDemoWorkspace() {
     decideResolution,
     addModerator,
     removeModerator,
+    updateOccurrenceLocation,
     contribute,
     setAlertsEnabled,
     setPushEnabled,

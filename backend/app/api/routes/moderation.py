@@ -18,6 +18,7 @@ from app.models import (
     UserPreference,
 )
 from app.schemas.occurrence import (
+    LocationUpdateRequest,
     ModerationComplaintRead,
     ModerationDecisionRead,
     ModerationQueueResponse,
@@ -27,7 +28,12 @@ from app.schemas.occurrence import (
     OccurrenceRead,
     ResolutionDecisionRequest,
 )
-from app.services.occurrences import map_moderation_status, to_public, to_report
+from app.services.occurrences import (
+    map_moderation_status,
+    to_public,
+    to_report,
+    validate_blumenau_point,
+)
 
 router = APIRouter(prefix="/moderation", tags=["Moderação"])
 Database = Annotated[Session, Depends(get_session)]
@@ -260,6 +266,27 @@ def decide_resolution(
 
     session.commit()
     return {"status": occurrence.status}
+
+
+@router.patch("/occurrences/{occurrence_id}/location", response_model=OccurrenceRead)
+def update_occurrence_location(
+    occurrence_id: UUID,
+    payload: LocationUpdateRequest,
+    _moderator: Moderator,
+    session: Database,
+):
+    occurrence = session.get(Occurrence, str(occurrence_id))
+    if occurrence is None:
+        raise HTTPException(status_code=404, detail="Ocorrência não encontrada.")
+    validate_blumenau_point(payload.latitude, payload.longitude)
+    occurrence.latitude = payload.latitude
+    occurrence.longitude = payload.longitude
+    if payload.place_name is not None and payload.place_name.strip():
+        occurrence.place_name = payload.place_name.strip()
+    occurrence.updated_at = utc_now()
+    session.commit()
+    session.refresh(occurrence)
+    return to_public(occurrence)
 
 
 @router.post("/complaints/{complaint_id}/review")

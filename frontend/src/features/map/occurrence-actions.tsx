@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Check, Flag, X } from 'lucide-react'
+import { Check, Flag, MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { routes } from '@/app/navigation'
 import type { Occurrence } from '@/features/occurrences/types'
@@ -51,17 +51,24 @@ function ComplaintDialog({ onSubmit, onClose }: { onSubmit: (reason: string) => 
   </dialog>
 }
 
-export function OccurrenceActions({ occurrence, flow, onFeedback, onUpdated }: {
+export function OccurrenceActions({ occurrence, flow, onFeedback, onUpdated, moving, draftPoint, savingMove, onStartMove, onSaveMove, onCancelMove }: {
   occurrence: Occurrence
   flow: Workspace
   onFeedback: (message: string) => void
   onUpdated: () => void
+  moving?: boolean
+  draftPoint?: { latitude: number; longitude: number } | null
+  savingMove?: boolean
+  onStartMove?: () => void
+  onSaveMove?: () => void
+  onCancelMove?: () => void
 }) {
   const [dialog, setDialog] = useState(false)
   const [busy, setBusy] = useState(false)
   const account = flow.account
   if (!account) return <Button asChild variant="outline"><a href={routes.login}>Entrar para contribuir</a></Button>
 
+  const isModerator = account.role === 'moderator'
   const confirmed = Boolean(occurrence.viewer_confirmed)
   const resolved = Boolean(occurrence.viewer_resolved)
   const complained = Boolean(occurrence.viewer_complained)
@@ -80,7 +87,18 @@ export function OccurrenceActions({ occurrence, flow, onFeedback, onUpdated }: {
   }
 
   return <div className="occurrence-actions">
-    <div className="workspace-actions">
+    {isModerator && moving ? <div className="workspace-form">
+      <p className="workspace-notice" role="status">
+        Clique no mapa para reposicionar esta ocorrência dentro de Blumenau.
+        {draftPoint && ` Novo ponto: ${draftPoint.latitude.toFixed(5)}, ${draftPoint.longitude.toFixed(5)}`}
+      </p>
+      <div className="workspace-actions">
+        <Button type="button" disabled={savingMove || !draftPoint} onClick={onSaveMove}>
+          <Check aria-hidden="true" /> {savingMove ? 'Salvando…' : 'Salvar posição'}
+        </Button>
+        <Button type="button" variant="outline" disabled={savingMove} onClick={onCancelMove}>Cancelar</Button>
+      </div>
+    </div> : <div className="workspace-actions">
       {occurrence.status === 'active' && <>
         <Button type="button" variant="outline" disabled={confirmed || busy}
           onClick={() => void handleContribute('confirmed', 'Confirmação registrada.')}>
@@ -91,10 +109,13 @@ export function OccurrenceActions({ occurrence, flow, onFeedback, onUpdated }: {
           {resolved ? 'Resolução indicada' : 'Indicar resolução'}
         </Button>
       </>}
+      {isModerator && onStartMove && <Button type="button" variant="outline" disabled={busy} onClick={onStartMove}>
+        <MapPin aria-hidden="true" /> Mover ponto
+      </Button>}
       <Button type="button" variant="ghost" disabled={complained || busy} onClick={() => setDialog(true)}>
         <Flag aria-hidden="true" /> {complained ? 'Denúncia enviada' : 'Denunciar'}
       </Button>
-    </div>
+    </div>}
     {dialog && <ComplaintDialog onClose={() => setDialog(false)} onSubmit={async reason => {
       await flow.complain(occurrence, reason)
       setDialog(false)
