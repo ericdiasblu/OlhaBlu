@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Bell, Check, CheckCheck, ClipboardList, FileText, MapPin, Monitor, Pencil, Plus, ShieldCheck } from 'lucide-react'
+import { Bell, Check, CheckCheck, ClipboardList, FileText, MapPin, Monitor, Pencil, Plus, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FilterSelect } from '@/components/ui/filter-select'
 import { routes } from '@/app/navigation'
 import { apiUrl } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import type { Occurrence } from '@/features/occurrences/types'
 import { outcomes, type Outcome, type Report, type Workspace } from './demo-workspace'
 import { PhotoPreview } from './report-page'
 import { WorkspaceEmpty, WorkspaceHeading } from './workspace-ui'
@@ -121,8 +122,124 @@ function ReviewReport({ report, onReview }: {
   </form>
 }
 
+function ReviewResolution({ occurrence, onDecide }: {
+  occurrence: Occurrence
+  onDecide: (decision: 'resolve' | 'keep_active', reason?: string) => Promise<void>
+}) {
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function run(decision: 'resolve' | 'keep_active') {
+    setError('')
+    setSubmitting(true)
+    try {
+      await onDecide(decision, reason.trim() || undefined)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar a ocorrência.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return <div className="workspace-form">
+    <h2>{occurrence.occurrence_type.label}</h2>
+    <p className="workflow-row-meta">
+      {occurrence.place_name || `${occurrence.latitude.toFixed(4)}, ${occurrence.longitude.toFixed(4)}`} · {formatDate(occurrence.updated_at)}
+    </p>
+    <p className="workspace-notice">
+      {occurrence.resolutions_count
+        ? `${occurrence.resolutions_count} indicaç${occurrence.resolutions_count === 1 ? 'ão' : 'ões'} de resolução · `
+        : 'Sem indicações de resolução · '}
+      {occurrence.confirmations_count ?? 0} confirmaç{(occurrence.confirmations_count ?? 0) === 1 ? 'ão' : 'ões'}
+    </p>
+    <div className="form-section">
+      <h3>Descrição</h3>
+      <p className="report-description">{occurrence.description}</p>
+    </div>
+    {occurrence.has_photo && <div className="form-section moderation-attachment"><h3>Foto anexada</h3><PhotoPreview src={apiUrl(`/occurrences/${occurrence.id}/photo`)} expandable /></div>}
+    <div className="form-section">
+      <label>Observação opcional<textarea value={reason} onChange={event => setReason(event.target.value)}
+        maxLength={300} rows={2} placeholder="Ex. Situação normalizada e verificada." /></label>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="workspace-actions">
+        <Button type="button" disabled={submitting} onClick={() => void run('resolve')}>
+          <Check aria-hidden="true" /> {submitting ? 'Salvando…' : 'Validar como resolvida'}
+        </Button>
+        {(occurrence.resolutions_count ?? 0) > 0 && <Button type="button" variant="outline" disabled={submitting}
+          onClick={() => void run('keep_active')}>
+          Manter ativa
+        </Button>}
+      </div>
+    </div>
+  </div>
+}
+
+function ModeratorsPanel({ flow, onFeedback }: { flow: Workspace; onFeedback: (message: string) => void }) {
+  const [email, setEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const clean = email.trim().toLowerCase()
+    if (!clean) return
+    setError('')
+    setSubmitting(true)
+    try {
+      await flow.addModerator(clean)
+      setEmail('')
+      onFeedback(`Administrador adicionado: ${clean}`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível adicionar o administrador.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function remove(id: string, targetEmail: string) {
+    setError('')
+    try {
+      await flow.removeModerator(id)
+      onFeedback(`Acesso de administrador removido: ${targetEmail}`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível remover o administrador.')
+    }
+  }
+
+  return <div className="workspace-form">
+    <form className="workspace-form" onSubmit={submit}>
+      <label>Adicionar administrador por e-mail
+        <input type="email" value={email} onChange={event => setEmail(event.target.value)}
+          required maxLength={254} placeholder="novo-admin@exemplo.com" />
+      </label>
+      <p className="field-hint">A pessoa precisa ter criado uma conta no sistema antes de receber acesso de administrador.</p>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div>
+        <Button type="submit" disabled={submitting}>
+          <UserPlus aria-hidden="true" /> {submitting ? 'Adicionando…' : 'Adicionar administrador'}
+        </Button>
+      </div>
+    </form>
+    <ul className="workflow-list">
+      {flow.moderators.map(mod => <li className="workflow-static-row" key={mod.id}>
+        <div className="workflow-row-title">
+          <strong>{mod.name}</strong>
+          {mod.isPrimary && <span className="workspace-status" data-outcome="published">Principal</span>}
+        </div>
+        <p className="workflow-row-meta">{mod.email}</p>
+        {!mod.isPrimary && mod.id !== flow.account?.id && <div className="report-row-actions">
+          <Button type="button" variant="ghost" size="sm" onClick={() => void remove(mod.id, mod.email)}>
+            <Trash2 size={15} aria-hidden="true" /> Remover acesso
+          </Button>
+        </div>}
+      </li>)}
+    </ul>
+  </div>
+}
+
 export function ModerationPage({ flow }: { flow: Workspace }) {
-  const [tab, setTab] = useState<'reports' | 'complaints' | 'history'>('reports')
+  const [tab, setTab] = useState<'reports' | 'resolutions' | 'complaints' | 'admins' | 'history'>('reports')
   const [selectedId, setSelectedId] = useState<string>()
   const [feedback, setFeedback] = useState('')
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 760px)').matches)
@@ -133,14 +250,23 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
     return () => viewport.removeEventListener('change', update)
   }, [])
   const pending = flow.pendingReports
+  const activeOccurrences = flow.activeOccurrences
+  const resolutionPendingCount = activeOccurrences.filter(item => (item.resolutions_count ?? 0) > 0).length
   const complaints = flow.complaints.filter(complaint => !complaint.reviewed)
   const reviewed = flow.decisions
   const report = pending.find(item => item.id === selectedId) ?? pending[0]
+  const activeOccurrence = activeOccurrences.find(item => item.id === selectedId) ?? activeOccurrences[0]
   const complaint = complaints.find(item => item.id === selectedId) ?? complaints[0]
+
   const inspector = tab === 'reports' && report ? <section className="workspace-panel moderation-inspector" aria-label="Detalhes para análise">
     <ReviewReport key={report.id} report={report} onReview={async (decision, reason) => {
       await flow.reviewReport(report, decision, reason)
       setFeedback('Decisão registrada com sucesso.')
+    }} />
+  </section> : tab === 'resolutions' && activeOccurrence ? <section className="workspace-panel moderation-inspector" aria-label="Validar resolução">
+    <ReviewResolution key={activeOccurrence.id} occurrence={activeOccurrence} onDecide={async (decision, reason) => {
+      await flow.decideResolution(activeOccurrence.id, decision, reason)
+      setFeedback(decision === 'resolve' ? 'Ocorrência validada como resolvida.' : 'Ocorrência mantida como ativa.')
     }} />
   </section> : tab === 'complaints' && complaint ? <section className="workspace-panel workspace-form moderation-inspector" aria-label="Analisar denúncia">
     <h2>{complaint.occurrence.occurrence_type.label}</h2>
@@ -158,15 +284,19 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
 
   return <main className="workspace" id="conteudo">
     <div className="moderation-heading">
-      <WorkspaceHeading title="Moderação" description="Analise propostas da comunidade e acompanhe as decisões registradas." />
+      <WorkspaceHeading title="Moderação" description="Analise propostas da comunidade, valide casos resolvidos e gerencie administradores." />
     </div>
     {feedback && <p className="workspace-feedback" role="status">{feedback}</p>}
     <div className="workspace-columns moderation-columns" data-inspector={Boolean(inspector)}>
       <section className="workspace-panel workflow-panel moderation-queue" aria-label="Fila de moderação">
         <div className="workflow-tabs" role="group" aria-label="Fila de moderação">
-          {(['reports', 'complaints', 'history'] as const).map(section => <Button key={section} type="button" variant="ghost"
+          {(['reports', 'resolutions', 'complaints', 'admins', 'history'] as const).map(section => <Button key={section} type="button" variant="ghost"
             aria-pressed={tab === section} onClick={() => { setTab(section); setSelectedId(undefined) }}>
-            {section === 'reports' ? `Relatos (${pending.length})` : section === 'complaints' ? `Denúncias (${complaints.length})` : 'Histórico'}
+            {section === 'reports' ? `Relatos (${pending.length})`
+              : section === 'resolutions' ? `Resoluções (${resolutionPendingCount || activeOccurrences.length})`
+              : section === 'complaints' ? `Denúncias (${complaints.length})`
+              : section === 'admins' ? `Administradores (${flow.moderators.length})`
+              : 'Histórico'}
           </Button>)}
         </div>
         {tab === 'reports' && (pending.length ? <ul className="workflow-list">{pending.map(item => <li key={item.id}>
@@ -175,12 +305,25 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
           </button>
           {compact && report?.id === item.id && inspector}
         </li>)}</ul> : <WorkspaceEmpty icon={<ClipboardList aria-hidden="true" />} title="Nenhum relato pendente" description="Quando alguém enviar um relato, ele aparecerá aqui para análise." />)}
+        {tab === 'resolutions' && (activeOccurrences.length ? <ul className="workflow-list">{activeOccurrences.map(item => <li key={item.id}>
+          <button type="button" className="workflow-select-row" aria-pressed={item.id === activeOccurrence?.id} onClick={() => setSelectedId(item.id)}>
+            <span className="workflow-row-title">
+              <span>{item.occurrence_type.label}</span>
+              {(item.resolutions_count ?? 0) > 0 && <span className="workspace-status" data-outcome="revision">
+                {item.resolutions_count} indicaç{item.resolutions_count === 1 ? 'ão' : 'ões'}
+              </span>}
+            </span>
+            <span className="workflow-row-meta">{item.place_name || 'Blumenau'} · {formatDate(item.updated_at)}</span>
+          </button>
+          {compact && activeOccurrence?.id === item.id && inspector}
+        </li>)}</ul> : <WorkspaceEmpty icon={<CheckCheck aria-hidden="true" />} title="Nenhuma ocorrência ativa" description="Ocorrências publicadas e indicações de resolução aparecem aqui para validação." />)}
         {tab === 'complaints' && (complaints.length ? <ul className="workflow-list">{complaints.map(item => <li key={item.id}>
           <button type="button" className="workflow-select-row" aria-pressed={item.id === complaint?.id} onClick={() => setSelectedId(item.id)}>
             <span className="workflow-row-title">{item.occurrence.occurrence_type.label}</span><span className="workflow-row-meta">{item.reason}</span>
           </button>
           {compact && complaint?.id === item.id && inspector}
         </li>)}</ul> : <WorkspaceEmpty icon={<ShieldCheck />} title="Nenhuma denúncia pendente" description="Denúncias enviadas pelo mapa aparecem aqui." />)}
+        {tab === 'admins' && <ModeratorsPanel flow={flow} onFeedback={setFeedback} />}
         {tab === 'history' && (reviewed.length || flow.complaints.some(item => item.reviewed) ? <ul className="workflow-list">
           {reviewed.map(item => <li className="workflow-static-row" key={item.id}>
             <div className="workflow-row-title"><strong>{item.report.type.label}</strong><ReportStatus status={item.status} /></div>

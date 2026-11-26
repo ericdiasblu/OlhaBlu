@@ -24,15 +24,23 @@ class Settings(BaseSettings):
     db_connect_timeout_seconds: int = Field(default=3, ge=1, le=15)
     occurrence_ttl_hours: int = Field(default=48, ge=1)
     session_ttl_days: int = Field(default=14, ge=1, le=90)
+    admin_email: str = ""
     moderator_emails: str = ""
 
     @property
+    def principal_admin_email(self) -> str:
+        return self.admin_email.strip().lower()
+
+    @property
     def moderator_email_set(self) -> set[str]:
-        return {
+        emails = {
             item.strip().lower()
             for item in self.moderator_emails.split(",")
             if item.strip()
         }
+        if self.principal_admin_email:
+            emails.add(self.principal_admin_email)
+        return emails
 
     @property
     def database_configured(self) -> bool:

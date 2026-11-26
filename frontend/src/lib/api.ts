@@ -70,3 +70,7 @@ export function apiPatch<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   })
 }
+
+export function apiDelete<T = void>(path: string): Promise<T> {
+  return request<T>(path, { method: 'DELETE' })
+}

@@ -44,6 +44,7 @@ class UserRead(BaseModel):
     name: str
     email: str
     role: Literal["resident", "moderator"]
+    is_primary_admin: bool = False
 
 
 class AuthResponse(BaseModel):

@@ -149,11 +149,42 @@ class ModerationDecisionRead(BaseModel):
         return value.replace(tzinfo=UTC).isoformat()
 
 
+class ModeratorRead(BaseModel):
+    id: str
+    name: str
+    email: str
+    is_primary: bool
+    created_at: datetime
+
+    @field_serializer("created_at")
+    def serialize_utc(self, value: datetime) -> str:
+        return value.replace(tzinfo=UTC).isoformat()
+
+
+class ModeratorAddRequest(BaseModel):
+    email: str = Field(min_length=5, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def clean_email(cls, value: str) -> str:
+        email = value.strip().lower()
+        if "@" not in email or "." not in email.split("@", 1)[-1]:
+            raise ValueError("Informe um e-mail válido.")
+        return email
+
+
+class ResolutionDecisionRequest(BaseModel):
+    decision: Literal["resolve", "keep_active"]
+    reason: str | None = Field(default=None, max_length=300)
+
+
 class ModerationQueueResponse(BaseModel):
     pending_reports: list[ReportRead]
     pending_complaints: list[ModerationComplaintRead]
     decisions: list[ModerationDecisionRead]
     reviewed_complaints: list[ModerationComplaintRead]
+    active_occurrences: list[OccurrenceRead] = Field(default_factory=list)
+    moderators: list[ModeratorRead] = Field(default_factory=list)
 
 
 class NotificationRead(BaseModel):

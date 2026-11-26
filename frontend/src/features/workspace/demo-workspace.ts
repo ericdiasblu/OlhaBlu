@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
-import { apiGet, apiPatch, apiPost, apiPut, ApiError } from '@/lib/api'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, ApiError } from '@/lib/api'
 import type { Place } from '@/features/location/blumenau'
 import type { Occurrence, OccurrenceType } from '@/features/occurrences/types'
 
-export type Account = { id: string; name: string; email: string; role: 'resident' | 'moderator' }
+export type Account = {
+  id: string
+  name: string
+  email: string
+  role: 'resident' | 'moderator'
+  is_primary_admin?: boolean
+}
+export type ModeratorAccount = {
+  id: string
+  name: string
+  email: string
+  isPrimary: boolean
+  createdAt: string
+}
 export type ReportDraft = {
   type: OccurrenceType
   description: string
@@ -91,11 +104,21 @@ type ApiDecision = {
   created_at: string
 }
 
+type ApiModerator = {
+  id: string
+  name: string
+  email: string
+  is_primary: boolean
+  created_at: string
+}
+
 type ApiModerationQueue = {
   pending_reports: ApiReport[]
   pending_complaints: ApiComplaint[]
   decisions: ApiDecision[]
   reviewed_complaints: ApiComplaint[]
+  active_occurrences: Occurrence[]
+  moderators: ApiModerator[]
 }
 
 type ApiAlertsResponse = {
@@ -142,6 +165,8 @@ export function useDemoWorkspace() {
   const [types, setTypes] = useState<OccurrenceType[]>(demoTypes)
   const [reports, setReports] = useState<Report[]>([])
   const [pendingReports, setPendingReports] = useState<Report[]>([])
+  const [activeOccurrences, setActiveOccurrences] = useState<Occurrence[]>([])
+  const [moderators, setModerators] = useState<ModeratorAccount[]>([])
   const [decisions, setDecisions] = useState<Decision[]>([])
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
@@ -168,6 +193,14 @@ export function useDemoWorkspace() {
   const refreshModerationData = useCallback(async () => {
     const queue = await apiGet<ApiModerationQueue>('/moderation/queue')
     setPendingReports(queue.pending_reports.map(mapReport))
+    setActiveOccurrences(queue.active_occurrences ?? [])
+    setModerators((queue.moderators ?? []).map(item => ({
+      id: item.id,
+      name: item.name,
+      email: item.email,
+      isPrimary: item.is_primary,
+      createdAt: item.created_at,
+    })))
     setComplaints([
       ...queue.pending_complaints.map(mapComplaint),
       ...queue.reviewed_complaints.map(mapComplaint),
@@ -206,6 +239,8 @@ export function useDemoWorkspace() {
     if (!account) {
       setReports([])
       setPendingReports([])
+      setActiveOccurrences([])
+      setModerators([])
       setDecisions([])
       setComplaints([])
       setNotices([])
@@ -284,6 +319,25 @@ export function useDemoWorkspace() {
     await refreshModerationData()
   }
 
+  async function decideResolution(
+    occurrenceId: string,
+    decision: 'resolve' | 'keep_active',
+    reason?: string,
+  ): Promise<void> {
+    await apiPost(`/moderation/occurrences/${occurrenceId}/resolution`, { decision, reason })
+    await refreshModerationData()
+  }
+
+  async function addModerator(email: string): Promise<void> {
+    await apiPost('/moderation/moderators', { email })
+    await refreshModerationData()
+  }
+
+  async function removeModerator(userId: string): Promise<void> {
+    await apiDelete(`/moderation/moderators/${userId}`)
+    await refreshModerationData()
+  }
+
   async function contribute(id: string, kind: 'confirmed' | 'resolved'): Promise<void> {
     await apiPost(`/occurrences/${id}/contributions`, { kind })
   }
@@ -325,6 +379,8 @@ export function useDemoWorkspace() {
     logout,
     reports,
     pendingReports,
+    activeOccurrences,
+    moderators,
     decisions,
     complaints,
     notices,
@@ -334,6 +390,9 @@ export function useDemoWorkspace() {
     reviewReport,
     complain,
     reviewComplaint,
+    decideResolution,
+    addModerator,
+    removeModerator,
     contribute,
     setAlertsEnabled,
     setPushEnabled,

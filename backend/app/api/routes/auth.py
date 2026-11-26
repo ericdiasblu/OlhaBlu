@@ -26,12 +26,21 @@ Database = Annotated[Session, Depends(get_session)]
 
 
 def _to_user_read(user: User) -> UserRead:
+    primary = get_settings().principal_admin_email
     return UserRead(
         id=user.id,
         name=user.name,
         email=user.email,
         role="moderator" if user.role == "moderator" else "resident",
+        is_primary_admin=bool(primary and user.email.lower() == primary),
     )
+
+
+def _sync_configured_role(session: Session, user: User) -> bool:
+    if user.email.lower() in get_settings().moderator_email_set and user.role != "moderator":
+        user.role = "moderator"
+        return True
+    return False
 
 
 def _is_https(request: Request) -> bool:
@@ -107,6 +116,7 @@ def login(payload: LoginRequest, request: Request, response: Response, session: 
         raise HTTPException(status_code=401, detail="E-mail ou senha inválidos.")
     if not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="E-mail ou senha inválidos.")
+    _sync_configured_role(session, user)
     raw_token, max_age = _create_session(session, user)
     session.commit()
     _set_session_cookie(request, response, raw_token, max_age)
@@ -131,5 +141,7 @@ def logout(request: Request, response: Response, session: Database):
 
 
 @router.get("/me", response_model=AuthResponse)
-def me(user: Annotated[User, Depends(get_current_user)]):
+def me(user: Annotated[User, Depends(get_current_user)], session: Database):
+    if _sync_configured_role(session, user):
+        session.commit()
     return AuthResponse(user=_to_user_read(user))

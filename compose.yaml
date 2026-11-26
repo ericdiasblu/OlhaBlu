@@ -56,6 +56,7 @@ services:
       DB_USER: ${DB_USER:?required}
       DB_PASSWORD: ${DB_PASSWORD:?required}
       OCCURRENCE_TTL_HOURS: "48"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-${ACME_EMAIL:-}}
       MODERATOR_EMAILS: ${MODERATOR_EMAILS:-}
       TZ: UTC
     depends_on:
