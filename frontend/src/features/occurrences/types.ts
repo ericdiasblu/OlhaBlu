@@ -4,12 +4,19 @@ export type Occurrence = {
   id: string
   occurrence_type: OccurrenceType
   description: string
+  place_name?: string | null
   latitude: number
   longitude: number
   status: 'active' | 'resolved'
   source: 'community' | 'official'
   is_simulated: boolean
   freshness: 'current' | 'expired'
+  has_photo?: boolean
+  confirmations_count?: number
+  resolutions_count?: number
+  viewer_confirmed?: boolean
+  viewer_resolved?: boolean
+  viewer_complained?: boolean
   created_at: string
   updated_at: string
   last_confirmed_at: string | null

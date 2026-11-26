@@ -4,7 +4,17 @@ from alembic import context
 from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import get_engine
-from app.models import Occurrence, OccurrenceType, User  # noqa: F401
+from app.models import (  # noqa: F401
+    ModerationDecision,
+    Notification,
+    Occurrence,
+    OccurrenceComplaint,
+    OccurrenceContribution,
+    OccurrenceType,
+    User,
+    UserPreference,
+    UserSession,
+)
 
 config = context.config
 if config.config_file_name is not None:

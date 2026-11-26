@@ -1,6 +1,8 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { apiUrl } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { PhotoPreview } from '@/features/workspace/report-page'
 import type { Occurrence } from './types'
 
 export function OccurrenceDetails({ occurrence, onClose, actions }: { occurrence: Occurrence; onClose: () => void; actions?: ReactNode }) {
@@ -14,15 +16,17 @@ export function OccurrenceDetails({ occurrence, onClose, actions }: { occurrence
         <span className="detail-status" data-status={occurrence.status}>{occurrence.status === 'active' ? 'Ativa' : 'Resolvida'}</span>
       </div>
       <p className="detail-description">{occurrence.description}</p>
+      {occurrence.has_photo && <PhotoPreview src={apiUrl(`/occurrences/${occurrence.id}/photo`)} expandable />}
       <p className="detail-source">
         {occurrence.source === 'official' ? 'Fonte oficial' : 'Relato comunitário'}
+        {occurrence.confirmations_count ? ` · ${occurrence.confirmations_count} confirmação${occurrence.confirmations_count === 1 ? '' : 'ões'}` : ''}
         {occurrence.is_simulated && ' · Simulação'}
       </p>
       <dl className="detail-metadata">
         <div><dt>Atualizada</dt><dd>{formatDate(occurrence.updated_at)}</dd></div>
         <div><dt>Registrada</dt><dd>{formatDate(occurrence.created_at)}</dd></div>
         <div><dt>Última confirmação</dt><dd>{occurrence.last_confirmed_at ? formatDate(occurrence.last_confirmed_at) : 'Sem confirmação'}</dd></div>
-        <div><dt>Local</dt><dd>{occurrence.latitude.toFixed(5)}, {occurrence.longitude.toFixed(5)}</dd></div>
+        <div><dt>Local</dt><dd>{occurrence.place_name || `${occurrence.latitude.toFixed(5)}, ${occurrence.longitude.toFixed(5)}`}</dd></div>
       </dl>
       {occurrence.freshness === 'expired' && <p className="row-note">Sem confirmação recente</p>}
       {actions && <div className="detail-actions">{actions}</div>}

@@ -11,5 +11,5 @@ def app_info() -> dict:
         "city": "Blumenau",
         "timezone": "America/Sao_Paulo",
         "map_center": [-49.0661, -26.9194],
-        "features": {"public_read": True, "write": False, "push": False, "photos": False},
+        "features": {"public_read": True, "write": True, "push": False, "photos": True},
     }

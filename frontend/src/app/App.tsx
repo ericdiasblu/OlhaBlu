@@ -15,16 +15,15 @@ const memberRoutes: Route[] = ['report', 'reports', 'alerts', 'moderation']
 export function App() {
   const route = useRoute()
   const flow = useDemoWorkspace()
-  const [showExamples, setShowExamples] = useState(false)
   const [editingId, setEditingId] = useState<string>()
   const [message, setMessage] = useState<string>()
   const [hasVisitedMap, setHasVisitedMap] = useState(route === 'map')
   const [darkTheme, setDarkTheme] = useState(() => document.documentElement.dataset.theme === 'dark')
   const previousRoute = useRef(route)
   const profile = useRef<HTMLDetailsElement>(null)
-  const guarded = memberRoutes.includes(route) && !flow.account
+  const guarded = flow.authReady && memberRoutes.includes(route) && !flow.account
   const unread = flow.notices.filter(notice => !notice.read).length
-  const editing = flow.reports.find(report => report.id === editingId && report.authorId === flow.account?.id && report.status === 'revision')
+  const editing = flow.reports.find(report => report.id === editingId && report.status === 'revision')
 
   useEffect(() => {
     const theme = darkTheme ? 'dark' : 'light'
@@ -43,13 +42,12 @@ export function App() {
   }, [route])
 
   function signIn(account: Account) {
-    flow.signIn(account)
     if (account.role === 'moderator') navigate('moderation')
     else if (!guarded || route === 'moderation') navigate('map')
   }
 
-  function signOut() {
-    flow.signIn(null)
+  async function signOut() {
+    await flow.logout()
     setEditingId(undefined)
     setMessage(undefined)
     navigate('map')
@@ -77,25 +75,29 @@ export function App() {
         event.currentTarget.querySelector('summary')?.focus()
       }
     }}>
-      <summary className="nav-item nav-icon" aria-label="Perfil" title="Perfil"><UserRound size={19} aria-hidden="true" /></summary>
+      <summary className="nav-item nav-icon" aria-label="Perfil" title={flow.account.name}><UserRound size={19} aria-hidden="true" /></summary>
       <div className="profile-options">
         <button type="button" className="nav-item theme-toggle" role="switch" aria-checked={darkTheme}
           onClick={() => setDarkTheme(enabled => !enabled)}>
           <Moon size={16} aria-hidden="true" /> Modo escuro <span className="theme-switch" aria-hidden="true" />
         </button>
-        <button type="button" className="nav-item" onClick={signOut}><LogOut size={16} aria-hidden="true" /> Sair</button>
+        <button type="button" className="nav-item" onClick={() => void signOut()}><LogOut size={16} aria-hidden="true" /> Sair</button>
       </div>
     </details>
   </nav>
 
   let page
-  if (route === 'login' || route === 'signup' || guarded) {
-    page = <AuthPage key={route} mode={route === 'signup' ? 'signup' : 'login'} onSignIn={signIn} requiresAccount={guarded} />
+  if (!flow.authReady && memberRoutes.includes(route)) {
+    page = <main id="conteudo" className="workspace">
+      <WorkspaceHeading title="Carregando…" description="Verificando sua sessão." />
+    </main>
+  } else if (route === 'login' || route === 'signup' || guarded) {
+    page = <AuthPage key={route} mode={route === 'signup' ? 'signup' : 'login'} flow={flow} onSignIn={signIn} requiresAccount={guarded} />
   } else if (route === 'report' && flow.account?.role === 'resident') {
-    page = <ReportPage key={editing?.id ?? 'new'} previous={editing} onSubmit={draft => {
-      flow.submitReport(draft, editing?.id)
+    page = <ReportPage key={editing?.id ?? 'new'} previous={editing} types={flow.types} onSubmit={async draft => {
+      await flow.submitReport(draft, editing?.id)
       setEditingId(undefined)
-      setMessage(editing ? 'Correção enviada para análise.' : undefined)
+      setMessage(editing ? 'Correção enviada para análise.' : 'Relato enviado para análise.')
       navigate('reports')
     }} />
   } else if (route === 'reports' && flow.account?.role === 'resident') {
@@ -113,14 +115,13 @@ export function App() {
         <p>Relatos em análise só são visíveis para quem enviou e para a moderação. O mapa ajuda na consulta e não substitui as orientações dos órgãos responsáveis.</p>
         <h2>O que acontece depois de enviar um relato?</h2>
         <p>O relato entra em análise. Em Meus relatos, você pode acompanhar a decisão e enviar uma correção se a moderação solicitar.</p>
-        <p>Nesta demonstração, os dados e as fotos ficam apenas na sessão atual.</p>
         <p>Os limites do município e os bairros vêm do <a href="https://geo.blumenau.sc.gov.br/">GEO Blumenau</a>.</p>
         <Button asChild variant="outline"><a href={routes.map}>Explorar mapa</a></Button>
       </section>
     </main>
   } else if (route !== 'map') {
     page = <main id="conteudo" className="workspace">
-      <WorkspaceHeading title="Área restrita" description="Este fluxo está reservado ao perfil correspondente na demonstração."
+      <WorkspaceHeading title="Área restrita" description="Este fluxo está reservado ao perfil correspondente."
         action={<Button asChild><a href={routes.map}>Voltar ao mapa</a></Button>} />
     </main>
   }
@@ -151,7 +152,7 @@ export function App() {
       </div>}
     </header>
     {(route === 'map' || hasVisitedMap) && <div hidden={route !== 'map'}>
-      <MapPage flow={flow} showExamples={showExamples} onExamples={setShowExamples} active={route === 'map'} />
+      <MapPage flow={flow} active={route === 'map'} />
     </div>}
     {page}
     {route === 'map' && flow.account?.role === 'resident' && <a className="map-report-action" href={routes.report}

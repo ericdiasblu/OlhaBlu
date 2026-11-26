@@ -3,6 +3,7 @@ import { Bell, Check, CheckCheck, ClipboardList, FileText, MapPin, Monitor, Penc
 import { Button } from '@/components/ui/button'
 import { FilterSelect } from '@/components/ui/filter-select'
 import { routes } from '@/app/navigation'
+import { apiUrl } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { outcomes, type Outcome, type Report, type Workspace } from './demo-workspace'
 import { PhotoPreview } from './report-page'
@@ -23,7 +24,7 @@ export function ReportsPage({ flow, onEdit, onCreate, message }: {
   flow: Workspace; onEdit: (report: Report) => void; onCreate: () => void; message?: string
 }) {
   const [filter, setFilter] = useState<Outcome | 'all'>('all')
-  const own = flow.reports.filter(report => report.authorId === flow.account?.id)
+  const own = flow.reports
   const visible = own.filter(report => filter === 'all' || report.status === filter)
   const hasReports = own.length > 0
   const createAction = <Button asChild><a href={routes.report} onClick={onCreate}><Plus aria-hidden="true" /> Registrar ocorrência</a></Button>
@@ -49,7 +50,7 @@ export function ReportsPage({ flow, onEdit, onCreate, message }: {
               </span>
             </span>
           </summary>
-          <div className="workflow-expanded report-expanded" data-photo={Boolean(report.photo)}>
+          <div className="workflow-expanded report-expanded" data-photo={report.hasPhoto}>
             <div className="report-description-block">
               <h3>Descrição</h3>
               <p className="report-description">{report.description}</p>
@@ -58,7 +59,7 @@ export function ReportsPage({ flow, onEdit, onCreate, message }: {
                 {report.status === 'revision' && <strong>Motivo da correção: </strong>}{report.reason}
               </p>}
             </div>
-            {report.photo && <div className="report-attachment"><h3>Foto anexada</h3><PhotoPreview photo={report.photo} expandable /></div>}
+            {report.hasPhoto && <div className="report-attachment"><h3>Foto anexada</h3><PhotoPreview src={apiUrl(`/occurrences/${report.id}/photo`)} expandable /></div>}
           </div>
         </details>
         {report.status === 'revision' && <div className="report-row-actions">
@@ -73,18 +74,31 @@ export function ReportsPage({ flow, onEdit, onCreate, message }: {
   </main>
 }
 
-function ReviewReport({ report, onReview }: { report: Report; onReview: (status: Exclude<Outcome, 'pending'>, reason: string) => void }) {
+function ReviewReport({ report, onReview }: {
+  report: Report
+  onReview: (status: Exclude<Outcome, 'pending'>, reason: string) => Promise<void>
+}) {
   const [decision, setDecision] = useState<Exclude<Outcome, 'pending'>>('published')
   const [reason, setReason] = useState('')
   const [invalid, setInvalid] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!reason.trim()) {
       setInvalid(true)
       return
     }
-    onReview(decision, reason.trim())
+    setError('')
+    setSubmitting(true)
+    try {
+      await onReview(decision, reason.trim())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível registrar a decisão.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return <form className="workspace-form" onSubmit={submit}>
@@ -94,14 +108,15 @@ function ReviewReport({ report, onReview }: { report: Report; onReview: (status:
       <h3>Descrição</h3>
       <p className="report-description">{report.description}</p>
     </div>
-    {report.photo && <div className="form-section moderation-attachment"><h3>Foto anexada</h3><PhotoPreview photo={report.photo} expandable /></div>}
+    {report.hasPhoto && <div className="form-section moderation-attachment"><h3>Foto anexada</h3><PhotoPreview src={apiUrl(`/occurrences/${report.id}/photo`)} expandable /></div>}
     <div className="form-section">
       <FilterSelect<Exclude<Outcome, 'pending'>> id="review-decision" label="Decisão" value={decision} onChange={setDecision}
-      options={[{ value: 'published', label: 'Aprovar e publicar' }, { value: 'revision', label: 'Solicitar correção' }, { value: 'rejected', label: 'Rejeitar' }]} />
-    <label>Justificativa<textarea value={reason} onChange={event => { setReason(event.target.value); setInvalid(false) }}
-      maxLength={300} rows={3} required placeholder="Descreva o motivo da decisão para o autor." /></label>
-    {invalid && <p className="form-error" role="alert">Informe o motivo da decisão.</p>}
-      <div><Button type="submit">Registrar decisão</Button></div>
+        options={[{ value: 'published', label: 'Aprovar e publicar' }, { value: 'revision', label: 'Solicitar correção' }, { value: 'rejected', label: 'Rejeitar' }]} />
+      <label>Justificativa<textarea value={reason} onChange={event => { setReason(event.target.value); setInvalid(false) }}
+        maxLength={300} rows={3} required placeholder="Descreva o motivo da decisão para o autor." /></label>
+      {invalid && <p className="form-error" role="alert">Informe o motivo da decisão.</p>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div><Button type="submit" disabled={submitting}>{submitting ? 'Registrando…' : 'Registrar decisão'}</Button></div>
     </div>
   </form>
 }
@@ -117,27 +132,33 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
     viewport.addEventListener('change', update)
     return () => viewport.removeEventListener('change', update)
   }, [])
-  const pending = flow.reports.filter(report => report.status === 'pending')
+  const pending = flow.pendingReports
   const complaints = flow.complaints.filter(complaint => !complaint.reviewed)
   const reviewed = flow.decisions
   const report = pending.find(item => item.id === selectedId) ?? pending[0]
   const complaint = complaints.find(item => item.id === selectedId) ?? complaints[0]
   const inspector = tab === 'reports' && report ? <section className="workspace-panel moderation-inspector" aria-label="Detalhes para análise">
-    <ReviewReport key={report.id} report={report} onReview={(decision, reason) => {
-      flow.reviewReport(report, decision, reason)
-      setFeedback('')
+    <ReviewReport key={report.id} report={report} onReview={async (decision, reason) => {
+      await flow.reviewReport(report, decision, reason)
+      setFeedback('Decisão registrada com sucesso.')
     }} />
   </section> : tab === 'complaints' && complaint ? <section className="workspace-panel workspace-form moderation-inspector" aria-label="Analisar denúncia">
     <h2>{complaint.occurrence.occurrence_type.label}</h2>
     <p className="report-description">{complaint.occurrence.description}</p>
     <p className="workspace-notice">{complaint.reason}</p>
-    <div><Button type="button" onClick={() => { flow.reviewComplaint(complaint.id); setFeedback('Denúncia analisada.') }}>Marcar como analisada</Button></div>
+    <div><Button type="button" onClick={async () => {
+      try {
+        await flow.reviewComplaint(complaint.id)
+        setFeedback('Denúncia analisada.')
+      } catch (cause) {
+        setFeedback(cause instanceof Error ? cause.message : 'Não foi possível analisar a denúncia.')
+      }
+    }}>Marcar como analisada</Button></div>
   </section> : null
 
   return <main className="workspace" id="conteudo">
     <div className="moderation-heading">
       <WorkspaceHeading title="Moderação" description="Analise propostas da comunidade e acompanhe as decisões registradas." />
-      <p className="field-hint">Modo demonstração. As decisões valem apenas nesta sessão.</p>
     </div>
     {feedback && <p className="workspace-feedback" role="status">{feedback}</p>}
     <div className="workspace-columns moderation-columns" data-inspector={Boolean(inspector)}>
@@ -183,8 +204,8 @@ export function AlertsPage({ flow }: { flow: Workspace }) {
 
   function markAsRead(id?: string) {
     allFilter.current?.focus({ preventScroll: true })
-    if (id) flow.markRead(id)
-    else flow.markAllRead()
+    if (id) void flow.markRead(id)
+    else void flow.markAllRead()
   }
 
   return <main className="workspace" id="conteudo">
@@ -222,13 +243,13 @@ export function AlertsPage({ flow }: { flow: Workspace }) {
           <Bell size={18} aria-hidden="true" />
           <span><strong id="in-app-alert-title">Alertas no app</strong><span className="field-hint" id="in-app-alert-hint">Receba atualizações dos seus relatos nesta central.</span></span>
           <input type="checkbox" role="switch" aria-labelledby="in-app-alert-title" aria-describedby="in-app-alert-hint"
-            checked={flow.alertsEnabled} onChange={event => flow.setAlertsEnabled(event.target.checked)} />
+            checked={flow.alertsEnabled} onChange={event => void flow.setAlertsEnabled(event.target.checked)} />
         </label>
         <label className="alert-preference">
           <Monitor size={18} aria-hidden="true" />
-          <span><strong id="browser-alert-title">Notificações no navegador</strong><span className="field-hint" id="browser-alert-hint">Preferência simulada. O envio depende da integração de Web Push.</span></span>
+          <span><strong id="browser-alert-title">Notificações no navegador</strong><span className="field-hint" id="browser-alert-hint">Preferência salva na conta. O envio depende da integração de Web Push.</span></span>
           <input type="checkbox" role="switch" aria-labelledby="browser-alert-title" aria-describedby="browser-alert-hint"
-            checked={flow.pushEnabled} onChange={event => flow.setPushEnabled(event.target.checked)} />
+            checked={flow.pushEnabled} onChange={event => void flow.setPushEnabled(event.target.checked)} />
         </label>
       </aside>
     </div>

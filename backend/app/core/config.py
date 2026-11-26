@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     db_password: SecretStr = SecretStr("")
     db_connect_timeout_seconds: int = Field(default=3, ge=1, le=15)
     occurrence_ttl_hours: int = Field(default=48, ge=1)
+    session_ttl_days: int = Field(default=14, ge=1, le=90)
+    moderator_emails: str = ""
+
+    @property
+    def moderator_email_set(self) -> set[str]:
+        return {
+            item.strip().lower()
+            for item in self.moderator_emails.split(",")
+            if item.strip()
+        }
 
     @property
     def database_configured(self) -> bool:
