@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, LogOut, Plus, UserRound, UserRoundPlus } from 'lucide-react'
+import { Bell, LogOut, Moon, Plus, Sun, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { MapPage } from '@/features/map/map-page'
 import { AuthPage } from '@/features/workspace/auth-page'
@@ -19,11 +19,19 @@ export function App() {
   const [editingId, setEditingId] = useState<string>()
   const [message, setMessage] = useState<string>()
   const [hasVisitedMap, setHasVisitedMap] = useState(route === 'map')
+  const [darkTheme, setDarkTheme] = useState(() => document.documentElement.dataset.theme === 'dark')
   const previousRoute = useRef(route)
   const profile = useRef<HTMLDetailsElement>(null)
   const guarded = memberRoutes.includes(route) && !flow.account
   const unread = flow.notices.filter(notice => !notice.read).length
   const editing = flow.reports.find(report => report.id === editingId && report.authorId === flow.account?.id && report.status === 'revision')
+
+  useEffect(() => {
+    const theme = darkTheme ? 'dark' : 'light'
+    document.documentElement.dataset.theme = theme
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', darkTheme ? '#0d0d0e' : '#f6f9fe')
+    try { localStorage.setItem('olhablu-theme', theme) } catch { /* Tema disponível nesta sessão. */ }
+  }, [darkTheme])
 
   useEffect(() => {
     if (previousRoute.current === route) return
@@ -55,13 +63,10 @@ export function App() {
 
   const memberNav = flow.account && <nav className="member-nav" aria-label="Área da conta">
     {flow.account.role === 'resident' && <>
-      <a className="nav-item nav-icon" href={routes.alerts} aria-current={route === 'alerts' ? 'page' : undefined}
-        aria-label={unread ? `Alertas (${unread} não lidos)` : 'Alertas'} title="Alertas">
-        <Bell size={19} aria-hidden="true" /> {unread > 0 && <span className="unread-count" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
+      <a className="nav-item nav-icon notification-link" href={routes.alerts} aria-current={route === 'alerts' ? 'page' : undefined}
+        aria-label={unread ? `Alertas (${unread} ${unread === 1 ? 'não lido' : 'não lidos'})` : 'Alertas'} title="Alertas">
+        <Bell size={20} strokeWidth={1.75} aria-hidden="true" /> {unread > 0 && <span className="unread-count" aria-hidden="true">{unread > 9 ? '9+' : unread}</span>}
       </a>
-      {route !== 'reports' && <Button asChild className="nav-item report-link"><a href={routes.report} aria-label="Registrar ocorrência" aria-current={route === 'report' ? 'page' : undefined} onClick={() => setEditingId(undefined)}>
-        <Plus aria-hidden="true" /> <span className="report-link-label">Registrar <span className="report-link-extra">ocorrência</span></span>
-      </a></Button>}
     </>}
     <details className="profile-menu" ref={profile} onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false
@@ -74,9 +79,10 @@ export function App() {
     }}>
       <summary className="nav-item nav-icon" aria-label="Perfil" title="Perfil"><UserRound size={19} aria-hidden="true" /></summary>
       <div className="profile-options">
-        <a className="nav-item" href={routes.signup} onClick={() => { if (profile.current) profile.current.open = false }}>
-          <UserRoundPlus size={16} aria-hidden="true" /> Criar conta
-        </a>
+        <button type="button" className="nav-item theme-toggle" role="switch" aria-checked={darkTheme}
+          onClick={() => setDarkTheme(enabled => !enabled)}>
+          <Moon size={16} aria-hidden="true" /> Modo escuro <span className="theme-switch" aria-hidden="true" />
+        </button>
         <button type="button" className="nav-item" onClick={signOut}><LogOut size={16} aria-hidden="true" /> Sair</button>
       </div>
     </details>
@@ -89,7 +95,7 @@ export function App() {
     page = <ReportPage key={editing?.id ?? 'new'} previous={editing} onSubmit={draft => {
       flow.submitReport(draft, editing?.id)
       setEditingId(undefined)
-      setMessage(editing ? 'Correção enviada para análise.' : 'Relato enviado para análise.')
+      setMessage(editing ? 'Correção enviada para análise.' : undefined)
       navigate('reports')
     }} />
   } else if (route === 'reports' && flow.account?.role === 'resident') {
@@ -100,11 +106,15 @@ export function App() {
     page = <AlertsPage flow={flow} />
   } else if (route === 'about') {
     page = <main id="conteudo" className="workspace">
-      <WorkspaceHeading title="Sobre o projeto" description="Um mapa colaborativo de ocorrências urbanas em Blumenau." />
+      <WorkspaceHeading title="Sobre" description="Um mapa colaborativo de ocorrências urbanas em Blumenau." />
       <section className="workspace-panel workspace-aside">
         <h2>Como funciona</h2>
         <p>Qualquer pessoa pode consultar as ocorrências publicadas. Quem tem conta pode enviar relatos, confirmar informações e encaminhar denúncias.</p>
         <p>Relatos em análise só são visíveis para quem enviou e para a moderação. O mapa ajuda na consulta e não substitui as orientações dos órgãos responsáveis.</p>
+        <h2>O que acontece depois de enviar um relato?</h2>
+        <p>O relato entra em análise. Em Meus relatos, você pode acompanhar a decisão e enviar uma correção se a moderação solicitar.</p>
+        <p>Nesta demonstração, os dados e as fotos ficam apenas na sessão atual.</p>
+        <p>Os limites do município e os bairros vêm do <a href="https://geo.blumenau.sc.gov.br/">GEO Blumenau</a>.</p>
         <Button asChild variant="outline"><a href={routes.map}>Explorar mapa</a></Button>
       </section>
     </main>
@@ -127,11 +137,15 @@ export function App() {
       </a>
       <nav aria-label="Navegação principal" className="header-nav">
         <a className="nav-item" href={routes.map} aria-current={route === 'map' ? 'page' : undefined}>Explorar mapa</a>
-        <a className="nav-item" href={routes.about} aria-current={route === 'about' ? 'page' : undefined}>Sobre o projeto</a>
         {flow.account?.role === 'resident' && <a className="nav-item" href={routes.reports} aria-current={route === 'reports' ? 'page' : undefined}>Meus relatos</a>}
         {flow.account?.role === 'moderator' && <a className="nav-item" href={routes.moderation} aria-current={route === 'moderation' ? 'page' : undefined}>Moderação</a>}
+        <a className="nav-item" href={routes.about} aria-current={route === 'about' ? 'page' : undefined}>Sobre</a>
       </nav>
       {memberNav ?? <div className="header-account">
+        <button type="button" className="nav-item nav-icon guest-theme-toggle" role="switch" aria-label="Modo escuro"
+          aria-checked={darkTheme} title={darkTheme ? 'Ativar modo claro' : 'Ativar modo escuro'} onClick={() => setDarkTheme(enabled => !enabled)}>
+          {darkTheme ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+        </button>
         <a className="nav-item" href={routes.login} aria-current={route === 'login' ? 'page' : undefined}>Entrar</a>
         <Button asChild className="nav-item"><a href={routes.signup} aria-current={route === 'signup' ? 'page' : undefined}>Criar conta</a></Button>
       </div>}
@@ -140,9 +154,13 @@ export function App() {
       <MapPage flow={flow} showExamples={showExamples} onExamples={setShowExamples} active={route === 'map'} />
     </div>}
     {page}
+    {route === 'map' && flow.account?.role === 'resident' && <a className="map-report-action" href={routes.report}
+      aria-label="Registrar ocorrência" title="Registrar ocorrência" onClick={() => setEditingId(undefined)}>
+      <Plus size={25} aria-hidden="true" />
+    </a>}
     <footer className="site-footer">
       <span>OlhaBlu · Blumenau, Santa Catarina</span>
-      <a href={routes.about}>Sobre o projeto</a>
+      <a href={routes.about}>Sobre</a>
     </footer>
   </div>
 }

@@ -11,9 +11,9 @@ Projeto Aplicado do SENAI sobre comunicação comunitária de ocorrências urban
 
 ## Onde estamos
 
-**Base de consulta criada.** O frontend e a API iniciaram juntos em desenvolvimento local e o proxy respondeu. O código da consulta ao MySQL e do mapa está implementado. A execução com MySQL migrado, token Mapbox e Docker Engine precisa de validação completa em outro ambiente.
+**Frontend de consulta e fluxos de demonstração testados.** O OlhaBlu oferece mapa limitado a Blumenau, busca dos 35 bairros, tema escuro e fluxos de conta, relatos, moderação e alertas. A leitura real via API, MySQL e Caddy ainda precisa de validação conjunta. A escrita e a sessão continuam simuladas. [[06 Historico/2026-11-25 - Refinos UX tema e mapa|Registro mais recente]].
 
-O [repositório privado do projeto](https://github.com/ericdiasblu/AEX) usa a branch `main` e começou no commit `0f0fcbb`. Consulte [[04 Infra/GitHub e automacao|GitHub e automação]] para comparar a cópia de trabalho com o remoto.
+O [repositório privado do projeto](https://github.com/ericdiasblu/OlhaBlu) usa a branch `main` e começou no commit `0f0fcbb`. Consulte [[04 Infra/GitHub e automacao|GitHub e automação]] para comparar a cópia de trabalho com o remoto.
 
 ## Retomar o trabalho
 

@@ -7,8 +7,8 @@ const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4',
   { variants: {
     variant: {
-      default: 'border border-transparent bg-primary text-primary-foreground hover:border-primary hover:bg-white hover:text-primary',
-      outline: 'border border-border bg-white text-foreground hover:bg-(--hover)',
+      default: 'border border-transparent bg-primary text-primary-foreground hover:border-primary hover:bg-(--surface) hover:text-primary',
+      outline: 'border border-border bg-(--surface) text-foreground hover:bg-(--hover)',
       ghost: 'text-muted-foreground hover:bg-(--hover) hover:text-foreground',
     },
     size: { default: 'h-10 px-4', sm: 'h-9 px-3 text-xs', icon: 'size-10' },

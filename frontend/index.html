@@ -5,6 +5,12 @@
     <link rel="icon" type="image/png" href="/olhablu-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f6f9fe" />
+    <script>
+      try {
+        const theme = localStorage.getItem('olhablu-theme')
+        if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme
+      } catch {}
+    </script>
     <meta name="description" content="Mapa colaborativo de ocorrências urbanas em Blumenau." />
     <title>OlhaBlu | Ocorrências urbanas</title>
   </head>

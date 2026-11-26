@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { Bell, ClipboardList, FileText, MapPin, Pencil, Plus, ShieldCheck } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Bell, Check, CheckCheck, ClipboardList, FileText, MapPin, Monitor, Pencil, Plus, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FilterSelect } from '@/components/ui/filter-select'
 import { routes } from '@/app/navigation'
@@ -43,16 +43,22 @@ export function ReportsPage({ flow, onEdit, onCreate, message }: {
         <details className="workflow-disclosure">
           <summary>
             <span className="report-summary">
-              <strong>{report.type.label}</strong>
-              <span className="report-neighborhood"><MapPin size={15} aria-hidden="true" /> {report.place.name}</span>
-              <time className="workflow-row-meta" dateTime={report.createdAt}>{formatDate(report.createdAt)}</time>
+              <span className="workflow-row-title"><strong>{report.type.label}</strong><ReportStatus status={report.status} /></span>
+              <span className="report-neighborhood"><MapPin size={15} aria-hidden="true" /> {report.place.name}
+                <span aria-hidden="true">·</span><time dateTime={report.createdAt}>{formatDate(report.createdAt).replace(', ', ' às ')}</time>
+              </span>
             </span>
-            <ReportStatus status={report.status} />
           </summary>
-          <div className="workflow-expanded">
-            <p className="report-description">{report.description}</p>
-            {report.photo && <PhotoPreview photo={report.photo} />}
-            {report.reason && <p className="workspace-notice">{report.reason}</p>}
+          <div className="workflow-expanded report-expanded" data-photo={Boolean(report.photo)}>
+            <div className="report-description-block">
+              <h3>Descrição</h3>
+              <p className="report-description">{report.description}</p>
+              {report.status === 'pending' && <p className="field-hint">Aguardando avaliação da moderação.</p>}
+              {report.reason && <p className="workspace-notice">
+                {report.status === 'revision' && <strong>Motivo da correção: </strong>}{report.reason}
+              </p>}
+            </div>
+            {report.photo && <div className="report-attachment"><h3>Foto anexada</h3><PhotoPreview photo={report.photo} expandable /></div>}
           </div>
         </details>
         {report.status === 'revision' && <div className="report-row-actions">
@@ -84,14 +90,19 @@ function ReviewReport({ report, onReview }: { report: Report; onReview: (status:
   return <form className="workspace-form" onSubmit={submit}>
     <h2>{report.type.label}</h2>
     <p className="workflow-row-meta">{report.place.name} · {formatDate(report.createdAt)}</p>
-    <p className="report-description">{report.description}</p>
-    {report.photo && <PhotoPreview photo={report.photo} />}
-    <FilterSelect<Exclude<Outcome, 'pending'>> id="review-decision" label="Decisão" value={decision} onChange={setDecision}
+    <div className="form-section">
+      <h3>Descrição</h3>
+      <p className="report-description">{report.description}</p>
+    </div>
+    {report.photo && <div className="form-section moderation-attachment"><h3>Foto anexada</h3><PhotoPreview photo={report.photo} expandable /></div>}
+    <div className="form-section">
+      <FilterSelect<Exclude<Outcome, 'pending'>> id="review-decision" label="Decisão" value={decision} onChange={setDecision}
       options={[{ value: 'published', label: 'Aprovar e publicar' }, { value: 'revision', label: 'Solicitar correção' }, { value: 'rejected', label: 'Rejeitar' }]} />
     <label>Justificativa<textarea value={reason} onChange={event => { setReason(event.target.value); setInvalid(false) }}
       maxLength={300} rows={3} required placeholder="Descreva o motivo da decisão para o autor." /></label>
     {invalid && <p className="form-error" role="alert">Informe o motivo da decisão.</p>}
-    <div><Button type="submit">Registrar decisão</Button></div>
+      <div><Button type="submit">Registrar decisão</Button></div>
+    </div>
   </form>
 }
 
@@ -99,18 +110,38 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
   const [tab, setTab] = useState<'reports' | 'complaints' | 'history'>('reports')
   const [selectedId, setSelectedId] = useState<string>()
   const [feedback, setFeedback] = useState('')
+  const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 760px)').matches)
+  useEffect(() => {
+    const viewport = window.matchMedia('(max-width: 760px)')
+    const update = () => setCompact(viewport.matches)
+    viewport.addEventListener('change', update)
+    return () => viewport.removeEventListener('change', update)
+  }, [])
   const pending = flow.reports.filter(report => report.status === 'pending')
   const complaints = flow.complaints.filter(complaint => !complaint.reviewed)
   const reviewed = flow.decisions
   const report = pending.find(item => item.id === selectedId) ?? pending[0]
   const complaint = complaints.find(item => item.id === selectedId) ?? complaints[0]
+  const inspector = tab === 'reports' && report ? <section className="workspace-panel moderation-inspector" aria-label="Detalhes para análise">
+    <ReviewReport key={report.id} report={report} onReview={(decision, reason) => {
+      flow.reviewReport(report, decision, reason)
+      setFeedback('')
+    }} />
+  </section> : tab === 'complaints' && complaint ? <section className="workspace-panel workspace-form moderation-inspector" aria-label="Analisar denúncia">
+    <h2>{complaint.occurrence.occurrence_type.label}</h2>
+    <p className="report-description">{complaint.occurrence.description}</p>
+    <p className="workspace-notice">{complaint.reason}</p>
+    <div><Button type="button" onClick={() => { flow.reviewComplaint(complaint.id); setFeedback('Denúncia analisada.') }}>Marcar como analisada</Button></div>
+  </section> : null
 
   return <main className="workspace" id="conteudo">
-    <WorkspaceHeading title="Moderação" description="Analise propostas da comunidade e acompanhe as decisões registradas." />
-    <p className="workspace-notice">Acesso de moderação de demonstração. As decisões ficam nesta sessão.</p>
+    <div className="moderation-heading">
+      <WorkspaceHeading title="Moderação" description="Analise propostas da comunidade e acompanhe as decisões registradas." />
+      <p className="field-hint">Modo demonstração. As decisões valem apenas nesta sessão.</p>
+    </div>
     {feedback && <p className="workspace-feedback" role="status">{feedback}</p>}
-    <div className="workspace-columns moderation-columns">
-      <section className="workspace-panel workflow-panel" aria-label="Fila de moderação">
+    <div className="workspace-columns moderation-columns" data-inspector={Boolean(inspector)}>
+      <section className="workspace-panel workflow-panel moderation-queue" aria-label="Fila de moderação">
         <div className="workflow-tabs" role="group" aria-label="Fila de moderação">
           {(['reports', 'complaints', 'history'] as const).map(section => <Button key={section} type="button" variant="ghost"
             aria-pressed={tab === section} onClick={() => { setTab(section); setSelectedId(undefined) }}>
@@ -121,11 +152,13 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
           <button type="button" className="workflow-select-row" aria-pressed={item.id === report?.id} onClick={() => setSelectedId(item.id)}>
             <ReportSummary report={item} />
           </button>
-        </li>)}</ul> : <WorkspaceEmpty icon={<ClipboardList />} title="Fila de relatos vazia" description="Novos relatos entram aqui para análise." />)}
+          {compact && report?.id === item.id && inspector}
+        </li>)}</ul> : <WorkspaceEmpty icon={<ClipboardList aria-hidden="true" />} title="Nenhum relato pendente" description="Quando alguém enviar um relato, ele aparecerá aqui para análise." />)}
         {tab === 'complaints' && (complaints.length ? <ul className="workflow-list">{complaints.map(item => <li key={item.id}>
           <button type="button" className="workflow-select-row" aria-pressed={item.id === complaint?.id} onClick={() => setSelectedId(item.id)}>
             <span className="workflow-row-title">{item.occurrence.occurrence_type.label}</span><span className="workflow-row-meta">{item.reason}</span>
           </button>
+          {compact && complaint?.id === item.id && inspector}
         </li>)}</ul> : <WorkspaceEmpty icon={<ShieldCheck />} title="Nenhuma denúncia pendente" description="Denúncias enviadas pelo mapa aparecem aqui." />)}
         {tab === 'history' && (reviewed.length || flow.complaints.some(item => item.reviewed) ? <ul className="workflow-list">
           {reviewed.map(item => <li className="workflow-static-row" key={item.id}>
@@ -136,49 +169,67 @@ export function ModerationPage({ flow }: { flow: Workspace }) {
           {flow.complaints.filter(item => item.reviewed).map(item => <li className="workflow-static-row" key={item.id}><strong>{item.occurrence.occurrence_type.label}</strong><p className="workflow-row-meta">Denúncia analisada · {item.reason}</p></li>)}
         </ul> : <WorkspaceEmpty icon={<ClipboardList />} title="Sem decisões registradas" description="O histórico aparece após a primeira análise." />)}
       </section>
-      {tab === 'reports' && report && <section className="workspace-panel" aria-label="Detalhes para análise">
-        <ReviewReport key={report.id} report={report} onReview={(decision, reason) => {
-          flow.reviewReport(report, decision, reason)
-          setFeedback('Decisão registrada.')
-        }} />
-      </section>}
-      {tab === 'complaints' && complaint && <section className="workspace-panel workspace-form" aria-label="Analisar denúncia">
-        <h2>{complaint.occurrence.occurrence_type.label}</h2>
-        <p className="report-description">{complaint.occurrence.description}</p>
-        <p className="workspace-notice">{complaint.reason}</p>
-        <div><Button type="button" onClick={() => { flow.reviewComplaint(complaint.id); setFeedback('Denúncia analisada.') }}>Marcar como analisada</Button></div>
-      </section>}
+      {!compact && inspector}
     </div>
   </main>
 }
 
 export function AlertsPage({ flow }: { flow: Workspace }) {
-  const [unread, setUnread] = useState(false)
-  const visible = flow.notices.filter(notice => !unread || !notice.read)
+  const [onlyUnread, setOnlyUnread] = useState(false)
+  const allFilter = useRef<HTMLButtonElement>(null)
+  const unreadCount = flow.notices.filter(notice => !notice.read).length
+  const visible = onlyUnread ? flow.notices.filter(notice => !notice.read) : flow.notices
+  const hasAlerts = flow.notices.length > 0
+
+  function markAsRead(id?: string) {
+    allFilter.current?.focus({ preventScroll: true })
+    if (id) flow.markRead(id)
+    else flow.markAllRead()
+  }
+
   return <main className="workspace" id="conteudo">
-    <WorkspaceHeading title="Alertas" description="Acompanhe as atualizações dos seus relatos." />
-    <div className="workspace-columns">
-      <section className="workspace-panel workflow-panel" aria-label="Central de alertas">
-        <div className="workflow-toolbar">
-          <Button type="button" variant="ghost" aria-pressed={unread} onClick={() => setUnread(value => !value)}>Só não lidos</Button>
-          <Button type="button" variant="ghost" onClick={flow.markAllRead} disabled={flow.notices.every(notice => notice.read)}>Marcar todos como lidos</Button>
-        </div>
-        {visible.length ? <ul className="workflow-list">{visible.map(notice => <li className="workflow-static-row" key={notice.id} data-unread={!notice.read}>
-          <div className="workflow-row-title"><strong>{notice.title}</strong>{!notice.read && <span className="workspace-status">Não lido</span>}</div>
-          <p className="report-description">{notice.body}</p>
-          <p className="workflow-row-meta">{formatDate(notice.time)}</p>
-          {!notice.read && <Button type="button" variant="ghost" onClick={() => flow.markRead(notice.id)}>Marcar como lido</Button>}
-        </li>)}</ul> : <WorkspaceEmpty icon={<Bell />} title={unread ? 'Nenhum alerta não lido' : 'Você ainda não tem alertas'}
-          description="As decisões sobre seus relatos aparecem nesta central." />}
+    <WorkspaceHeading title="Alertas" description="Veja quando seus relatos forem analisados ou precisarem de correção." />
+    <div className="workspace-columns alerts-columns">
+      <section className="workspace-panel workflow-panel alerts-panel" aria-label="Central de alertas">
+        {hasAlerts && <div className="alerts-toolbar">
+          <div className="alerts-filter" role="group" aria-label="Filtrar alertas">
+            <Button ref={allFilter} type="button" variant="ghost" aria-pressed={!onlyUnread} onClick={() => setOnlyUnread(false)}>Todos</Button>
+            <Button type="button" variant="ghost" aria-pressed={onlyUnread} onClick={() => setOnlyUnread(true)}>
+              Não lidos <span className="alerts-count">{unreadCount}</span>
+            </Button>
+          </div>
+          {unreadCount > 0 && <Button type="button" variant="ghost" onClick={() => markAsRead()}><CheckCheck aria-hidden="true" /> Marcar todos como lidos</Button>}
+        </div>}
+        <p className="sr-only" role="status">{unreadCount === 1 ? '1 alerta não lido' : `${unreadCount} alertas não lidos`}</p>
+        {visible.length > 0 ? <ul className="workflow-list">{visible.map(notice => <li className="alert-row" key={notice.id} data-unread={!notice.read}>
+          <span className="alert-row-icon" aria-hidden="true"><Bell size={18} /></span>
+          <div className="alert-row-content">
+            <div className="workflow-row-title"><strong>{notice.title}</strong>{!notice.read && <span className="workspace-status">Não lido</span>}</div>
+            <p className="report-description">{notice.body}</p>
+            <time className="workflow-row-meta" dateTime={notice.time}>{formatDate(notice.time)}</time>
+          </div>
+          {!notice.read && <Button type="button" size="icon" variant="ghost" className="alert-read-button" title="Marcar como lido"
+            aria-label={`Marcar como lido: ${notice.title}`} onClick={() => markAsRead(notice.id)}><Check aria-hidden="true" /></Button>}
+        </li>)}</ul> : <WorkspaceEmpty icon={<Bell aria-hidden="true" />} title={onlyUnread ? 'Você está em dia' : 'Você ainda não tem alertas'}
+          description={onlyUnread ? 'Todos os seus alertas já foram lidos.' : 'Quando houver uma atualização em um relato seu, ela vai aparecer aqui.'}
+          action={hasAlerts
+            ? <Button type="button" variant="outline" onClick={() => { setOnlyUnread(false); allFilter.current?.focus() }}>Ver todos os alertas</Button>
+            : <Button asChild variant="outline"><a href={routes.reports}>Ver meus relatos</a></Button>} />}
       </section>
-      <aside className="workspace-panel workspace-aside">
-        <h2>Preferências</h2>
-        <label className="preference-control"><input type="checkbox" checked={flow.alertsEnabled}
-          onChange={event => flow.setAlertsEnabled(event.target.checked)} /> Receber alertas no app</label>
-        <p className="field-hint" role="status">{flow.alertsEnabled ? 'Alertas no app ativados nesta sessão.' : 'Alertas no app desativados nesta sessão.'}</p>
-        <label className="preference-control"><input type="checkbox" checked={flow.pushEnabled}
-          onChange={event => flow.setPushEnabled(event.target.checked)} /> Permitir notificações no navegador</label>
-        <p className="field-hint">Preferência de demonstração. O envio pelo navegador depende da integração de Web Push.</p>
+      <aside className="workspace-panel alerts-preferences" aria-labelledby="alerts-preferences-title">
+        <h2 id="alerts-preferences-title">Preferências de alertas</h2>
+        <label className="alert-preference">
+          <Bell size={18} aria-hidden="true" />
+          <span><strong id="in-app-alert-title">Alertas no app</strong><span className="field-hint" id="in-app-alert-hint">Receba atualizações dos seus relatos nesta central.</span></span>
+          <input type="checkbox" role="switch" aria-labelledby="in-app-alert-title" aria-describedby="in-app-alert-hint"
+            checked={flow.alertsEnabled} onChange={event => flow.setAlertsEnabled(event.target.checked)} />
+        </label>
+        <label className="alert-preference">
+          <Monitor size={18} aria-hidden="true" />
+          <span><strong id="browser-alert-title">Notificações no navegador</strong><span className="field-hint" id="browser-alert-hint">Preferência simulada. O envio depende da integração de Web Push.</span></span>
+          <input type="checkbox" role="switch" aria-labelledby="browser-alert-title" aria-describedby="browser-alert-hint"
+            checked={flow.pushEnabled} onChange={event => flow.setPushEnabled(event.target.checked)} />
+        </label>
       </aside>
     </div>
   </main>

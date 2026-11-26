@@ -25,6 +25,7 @@ O [mockup](design-home.png) mostra a referência da consulta em desktop e celula
 | `--focus` | `#2356a3` | Foco visível com contorno de 2 px e afastamento de 3 px |
 | `--panel-shadow` | `0 8px 28px rgb(32 38 50 / 10%)` | Elevação dos painéis flutuantes |
 
+- No modo escuro, o fundo usa `#0D0D0E`, os painéis `#181819`, o hover `#232325` e a seleção `#2C2C2F`. Texto principal `#F1F1F2`, texto secundário `#AEAFB4` e azul de foco `#ADCCFF`. A preferência fica no menu do perfil e é salva neste navegador.
 - Tipografia Geist, com fallback para system-ui. Título 24/28 px e peso 650. Linhas 15/20 px e peso 600 para o tipo. Rótulos e metadados 13–14/18–20 px. Horários com numerais tabulares.
 - Espaçamento de 4, 8, 12, 16, 24 e 32 px. Raios de 8 px nos controles, 10 px nas linhas selecionadas e 16 px nos painéis. Áreas de toque com pelo menos 44 px.
 - Usar ícone, texto e contorno para comunicar seleção e situação, inclusive quando a cor tiver baixa percepção.
@@ -44,4 +45,6 @@ Usar `cubic-bezier(.2, .8, .2, 1)` nas entradas. Animar o elemento interno do ma
 
 A imagem de referência evidencia padrões visuais. A tecnologia da interface original não pode ser identificada a partir da captura. O AEX já tem React, TypeScript, Vite, Tailwind CSS, Lucide e Mapbox GL JS. Usar o CSS existente como base para os tokens, o layout responsivo e as transições.
 
-O mapa usa Mapbox Standard em `monochrome`, com luz `day`, projeção Mercator, objetos 3D desativados e pontos de interesse reduzidos. A cartografia real depende dos dados do provedor. A integração lê o token público em `VITE_MAPBOX_TOKEN` e mantém a atribuição do mapa visível. A imagem de contingência tem a indicação “Mapa ilustrativo”. [Mapbox Standard](https://docs.mapbox.com/map-styles/reference/standard/) · [Mapbox Studio](https://docs.mapbox.com/console-tools/studio/)
+O mapa usa Mapbox Standard em `monochrome`, com iluminação `day` e cores cartográficas específicas para o modo escuro, projeção Mercator, objetos 3D desativados e pontos de interesse reduzidos. A cartografia real depende dos dados do provedor. A integração lê o token público em `VITE_MAPBOX_TOKEN` e mantém a atribuição do mapa visível. A imagem de contingência tem a indicação “Mapa ilustrativo”. [Mapbox Standard](https://docs.mapbox.com/map-styles/reference/standard/) · [Mapbox Studio](https://docs.mapbox.com/console-tools/studio/)
+
+A navegação do mapa é limitada à extensão de Blumenau, com máscara fora do contorno municipal oficial. No tema escuro, o terreno usa tons de grafite e as vias são claras.

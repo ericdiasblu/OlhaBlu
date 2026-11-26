@@ -16,6 +16,6 @@ Os caminhos começam na raiz do repositório, uma pasta acima do vault.
 | Arquitetura v1.2 | `docs/final/Documento_de_Arquitetura_Ocorrencias_Urbanas.md` e `.pdf` | Decisões técnicas, contratos, infraestrutura e plano |
 | Base inicial | `docs/BASE_INICIAL.md` | Recorte da primeira implementação |
 
-[Documentos no repositório privado](https://github.com/ericdiasblu/AEX/tree/main/docs)
+[Documentos no repositório privado](https://github.com/ericdiasblu/OlhaBlu/tree/main/docs)
 
 Use a arquitetura v1.2 para entender a intenção técnica. Use as notas de área e o código para verificar o que existe hoje. Por exemplo, o Compose ganhou um modo HTTP local depois do PDF.

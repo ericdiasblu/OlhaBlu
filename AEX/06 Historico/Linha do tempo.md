@@ -14,5 +14,6 @@ Este é o histórico reconstruído a partir das mensagens acessíveis, dos docum
 | Revisão de segurança | [[06 Historico/Auditoria de dependencias Node|Auditoria das dependências Node]] |
 | Organização da continuidade | [[06 Historico/Criacao do vault|Criação da memória no Obsidian]] |
 | 25/11/2026 | [[06 Historico/2026-11-25 - Fluxos frontend OlhaBlu|Fluxos de conta, contribuição, moderação e alertas]] |
+| 25/11/2026 | [[06 Historico/2026-11-25 - Refinos UX tema e mapa|Refinos de interface, tema escuro e limite municipal]] |
 
 Cada sessão registra pedido, decisões e evidência. Use [[00 Projeto/Pendencias e proximos passos]] para o que ainda precisa acontecer.

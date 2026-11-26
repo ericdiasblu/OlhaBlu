@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { isInBlumenau, type Place } from '@/features/location/blumenau'
 import type { Occurrence, OccurrenceType } from '@/features/occurrences/types'
 
-export type Place = { name: string; latitude: number; longitude: number }
 export type Account = { id: string; name: string; role: 'resident' | 'moderator' }
 export type ReportDraft = { type: OccurrenceType; description: string; place: Place; photo?: File }
 export type Outcome = 'pending' | 'published' | 'revision' | 'rejected'
@@ -12,13 +12,10 @@ export type Complaint = { id: string; occurrence: Occurrence; reason: string; au
 export type Notice = { id: string; authorId: string; title: string; body: string; time: string; read: boolean }
 type Decision = { id: string; report: Report; status: Exclude<Outcome, 'pending'>; reason: string; time: string }
 
-export const places: Place[] = [
+const examplePlaces: Place[] = [
   { name: 'Centro', latitude: -26.9218, longitude: -49.0636 },
   { name: 'Victor Konder', latitude: -26.9091, longitude: -49.0762 },
   { name: 'Itoupava Seca', latitude: -26.9018, longitude: -49.071 },
-  { name: 'Vila Nova', latitude: -26.9096, longitude: -49.0911 },
-  { name: 'Garcia', latitude: -26.9422, longitude: -49.0621 },
-  { name: 'Velha', latitude: -26.9183, longitude: -49.1008 },
 ]
 
 export const demoTypes: OccurrenceType[] = [
@@ -35,9 +32,9 @@ export const resident: Account = { id: 'demo-resident', name: 'Morador visitante
 export const moderator: Account = { id: 'demo-moderator', name: 'Moderação', role: 'moderator' }
 
 const exampleReports: Report[] = [
-  { id: 'exemplo-alagamento', type: demoTypes[0], place: places[0], description: 'Acúmulo de água junto à travessia. A passagem está parcialmente bloqueada.', authorId: 'demo-neighbor', status: 'published', createdAt: new Date().toISOString() },
-  { id: 'exemplo-via', type: demoTypes[5], place: places[1], description: 'Um buraco ocupa parte da faixa junto ao cruzamento.', authorId: 'demo-neighbor', status: 'published', createdAt: new Date().toISOString() },
-  { id: 'exemplo-arvore', type: demoTypes[2], place: places[2], description: 'Árvore caída sobre a calçada. Ainda há passagem pela via.', authorId: resident.id, status: 'pending', createdAt: new Date().toISOString() },
+  { id: 'exemplo-alagamento', type: demoTypes[0], place: examplePlaces[0], description: 'Acúmulo de água junto à travessia. A passagem está parcialmente bloqueada.', authorId: 'demo-neighbor', status: 'published', createdAt: new Date().toISOString() },
+  { id: 'exemplo-via', type: demoTypes[5], place: examplePlaces[1], description: 'Um buraco ocupa parte da faixa junto ao cruzamento.', authorId: 'demo-neighbor', status: 'published', createdAt: new Date().toISOString() },
+  { id: 'exemplo-arvore', type: demoTypes[2], place: examplePlaces[2], description: 'Árvore caída sobre a calçada. Ainda há passagem pela via.', authorId: resident.id, status: 'pending', createdAt: new Date().toISOString() },
 ]
 
 const exampleNotice: Notice = {
@@ -48,12 +45,6 @@ const exampleNotice: Notice = {
 
 export const outcomes: Record<Outcome, string> = {
   pending: 'Em análise', published: 'Publicado', revision: 'Correção solicitada', rejected: 'Não aprovado',
-}
-
-export function matchPlaces(query: string) {
-  const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
-  const aliases: Record<string, string> = { Centro: 'Rua XV de Novembro', 'Victor Konder': 'Rua São Paulo', 'Itoupava Seca': 'Rua Antônio da Veiga' }
-  return places.filter(place => normalize(`${place.name} ${aliases[place.name] ?? ''}`).includes(normalize(query.trim())))
 }
 
 export function useDemoWorkspace() {
@@ -67,7 +58,7 @@ export function useDemoWorkspace() {
   const [contributions, setContributions] = useState<Record<string, { confirmed: string[]; resolved: string[]; lastConfirmed: string | null }>>({})
 
   function submitReport(draft: ReportDraft, id?: string) {
-    if (!account || account.role !== 'resident') return
+    if (!account || account.role !== 'resident' || !isInBlumenau(draft.place)) return
     if (id) {
       setReports(current => current.map(report => report.id === id && report.authorId === account.id && report.status === 'revision'
         ? { ...report, ...draft, status: 'pending', reason: undefined } : report))

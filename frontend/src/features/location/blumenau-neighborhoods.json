@@ -1,0 +1,177 @@
+[
+  {
+    "name": "Badenfurt",
+    "longitude": -49.14500719,
+    "latitude": -26.88190822
+  },
+  {
+    "name": "Boa Vista",
+    "longitude": -49.06905275,
+    "latitude": -26.9038873
+  },
+  {
+    "name": "Bom Retiro",
+    "longitude": -49.07095978,
+    "latitude": -26.92688038
+  },
+  {
+    "name": "Centro",
+    "longitude": -49.07337606,
+    "latitude": -26.91763131
+  },
+  {
+    "name": "Da Glória",
+    "longitude": -49.06406252,
+    "latitude": -26.96953937
+  },
+  {
+    "name": "Do Salto",
+    "longitude": -49.10508566,
+    "latitude": -26.88687011
+  },
+  {
+    "name": "Escola Agrícola",
+    "longitude": -49.10406617,
+    "latitude": -26.89833228
+  },
+  {
+    "name": "Fidélis",
+    "longitude": -49.06427464,
+    "latitude": -26.83518653
+  },
+  {
+    "name": "Fortaleza",
+    "longitude": -49.06793628,
+    "latitude": -26.8729128
+  },
+  {
+    "name": "Fortaleza Alta",
+    "longitude": -49.05385721,
+    "latitude": -26.84742074
+  },
+  {
+    "name": "Garcia",
+    "longitude": -49.06991739,
+    "latitude": -26.942842
+  },
+  {
+    "name": "Itoupava Central",
+    "longitude": -49.09064708,
+    "latitude": -26.79580219
+  },
+  {
+    "name": "Itoupava Norte",
+    "longitude": -49.07784043,
+    "latitude": -26.88219012
+  },
+  {
+    "name": "Itoupava Seca",
+    "longitude": -49.08476797,
+    "latitude": -26.89187605
+  },
+  {
+    "name": "Itoupavazinha",
+    "longitude": -49.11055875,
+    "latitude": -26.8523715
+  },
+  {
+    "name": "Jardim Blumenau",
+    "longitude": -49.06424902,
+    "latitude": -26.92919223
+  },
+  {
+    "name": "Nova Esperança",
+    "longitude": -49.05295579,
+    "latitude": -26.88672632
+  },
+  {
+    "name": "Passo Manso",
+    "longitude": -49.14667964,
+    "latitude": -26.91147813
+  },
+  {
+    "name": "Ponta Aguda",
+    "longitude": -49.05600592,
+    "latitude": -26.90516434
+  },
+  {
+    "name": "Progresso",
+    "longitude": -49.07766165,
+    "latitude": -26.98233633
+  },
+  {
+    "name": "Ribeirão Fresco",
+    "longitude": -49.04312416,
+    "latitude": -26.92761696
+  },
+  {
+    "name": "Salto Weissbach",
+    "longitude": -49.12953554,
+    "latitude": -26.89683004
+  },
+  {
+    "name": "Salto do Norte",
+    "longitude": -49.10617819,
+    "latitude": -26.87418944
+  },
+  {
+    "name": "Testo Salto",
+    "longitude": -49.15118097,
+    "latitude": -26.85316323
+  },
+  {
+    "name": "Tribess",
+    "longitude": -49.05093647,
+    "latitude": -26.87334437
+  },
+  {
+    "name": "Valparaíso",
+    "longitude": -49.07443339,
+    "latitude": -26.9509308
+  },
+  {
+    "name": "Velha",
+    "longitude": -49.1046514,
+    "latitude": -26.92497915
+  },
+  {
+    "name": "Velha Central",
+    "longitude": -49.13299889,
+    "latitude": -26.93058726
+  },
+  {
+    "name": "Velha Grande",
+    "longitude": -49.13251603,
+    "latitude": -26.95035829
+  },
+  {
+    "name": "Victor Konder",
+    "longitude": -49.07569431,
+    "latitude": -26.90827364
+  },
+  {
+    "name": "Vila Formosa",
+    "longitude": -49.0720479,
+    "latitude": -26.93888608
+  },
+  {
+    "name": "Vila Itoupava",
+    "longitude": -49.06864062,
+    "latitude": -26.72917624
+  },
+  {
+    "name": "Vila Nova",
+    "longitude": -49.08930075,
+    "latitude": -26.90560539
+  },
+  {
+    "name": "Vorstadt",
+    "longitude": -49.02776985,
+    "latitude": -26.90867012
+  },
+  {
+    "name": "Água Verde",
+    "longitude": -49.11480394,
+    "latitude": -26.91231164
+  }
+]
